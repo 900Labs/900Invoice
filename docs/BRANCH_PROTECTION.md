@@ -25,7 +25,7 @@ Required:
 Required when GitHub plan/visibility allows branch protection:
 
 1. Require pull request before merge.
-2. Require at least 1 approving review.
+2. Require 0 approving reviews by default (`REQUIRED_APPROVING_REVIEW_COUNT=0`).
 3. Dismiss stale approvals on new commits.
 4. Require status checks to pass before merge.
 5. Required status check context includes `Quality Gate`.
@@ -45,8 +45,13 @@ Required when GitHub plan/visibility allows branch protection:
 Notes:
 
 1. The script always applies repository merge settings.
-2. If branch protection is unavailable (for example private-repo plan restriction), the script prints a notice and exits successfully.
-3. Re-run the script after making the repository public to enable branch protection.
+2. Default policy is optimized for autonomous maintainer workflows and uses `REQUIRED_APPROVING_REVIEW_COUNT=0`.
+3. To require approvals, set an override before applying policy:
+   ```bash
+   REQUIRED_APPROVING_REVIEW_COUNT=1 ./scripts/apply-repo-policy.sh 900Labs/900Invoice main
+   ```
+4. If branch protection is unavailable (for example private-repo plan restriction), the script prints a notice and exits successfully.
+5. Re-run the script after making the repository public to enable branch protection.
 
 ---
 
@@ -63,6 +68,12 @@ STRICT=1 ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
 ```
 
 `STRICT=1` is the default. Set `STRICT=0` only for temporary diagnostics.
+
+To verify a non-default approval requirement, pass the same override:
+
+```bash
+REQUIRED_APPROVING_REVIEW_COUNT=1 ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+```
 
 ---
 

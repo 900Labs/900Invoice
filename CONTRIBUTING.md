@@ -532,7 +532,7 @@ chore(deps): update tauri to 2.1.0
 
 ## Code Review
 
-All PRs require at least one maintainer approval before merging.
+Maintainer review is strongly recommended for all PRs, but branch protection currently does not require approving reviews (`required_approving_review_count = 0`) to avoid self-approval deadlocks in low-capacity maintainer workflows.
 
 **What we look for:**
 - Does the code follow money/tax rules (integers, basis points, no floats)?

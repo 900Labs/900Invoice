@@ -4,6 +4,12 @@ set -euo pipefail
 REPO="${1:-900Labs/900Invoice}"
 BRANCH="${2:-main}"
 STRICT="${STRICT:-1}"
+REQUIRED_APPROVING_REVIEW_COUNT="${REQUIRED_APPROVING_REVIEW_COUNT:-0}"
+
+if [[ ! "$REQUIRED_APPROVING_REVIEW_COUNT" =~ ^[0-9]+$ ]]; then
+  echo "FAIL: REQUIRED_APPROVING_REVIEW_COUNT must be a non-negative integer."
+  exit 1
+fi
 
 fail=0
 
@@ -27,7 +33,7 @@ status=$?
 set -e
 
 if [[ $status -ne 0 ]]; then
-  if echo "$protection_json" | rg -q "Upgrade to GitHub Pro or make this repository public"; then
+  if echo "$protection_json" | grep -q "Upgrade to GitHub Pro or make this repository public"; then
     echo "NOTICE: branch protection unavailable due to private-repo plan/visibility restriction."
     if [[ "$STRICT" == "1" ]]; then
       echo "FAIL: STRICT=1 and branch protection is unavailable."
@@ -48,8 +54,11 @@ else
 
   [[ "$require_admins" == "true" ]] || { echo "FAIL: enforce_admins.enabled must be true"; fail=1; }
   [[ "$strict_checks" == "true" ]] || { echo "FAIL: required_status_checks.strict must be true"; fail=1; }
-  echo "$contexts" | rg -qx "Quality Gate" || { echo "FAIL: required checks must include 'Quality Gate'"; fail=1; }
-  [[ "$reviews" -ge 1 ]] || { echo "FAIL: required approving reviews must be >= 1"; fail=1; }
+  echo "$contexts" | grep -Fxq "Quality Gate" || { echo "FAIL: required checks must include 'Quality Gate'"; fail=1; }
+  [[ "$reviews" -eq "$REQUIRED_APPROVING_REVIEW_COUNT" ]] || {
+    echo "FAIL: required approving reviews must be ${REQUIRED_APPROVING_REVIEW_COUNT}"
+    fail=1
+  }
   [[ "$conv" == "true" ]] || { echo "FAIL: required conversation resolution must be enabled"; fail=1; }
   [[ "$linear" == "true" ]] || { echo "FAIL: required linear history must be enabled"; fail=1; }
 fi
