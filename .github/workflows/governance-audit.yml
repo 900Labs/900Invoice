@@ -1,0 +1,42 @@
+name: Governance Audit
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      required_approving_review_count:
+        description: "Expected required_approving_review_count for main branch protection"
+        required: false
+        default: "0"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: governance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance-audit:
+    name: Governance Audit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify repository policy (strict)
+        shell: bash
+        env:
+          GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+          GH_FALLBACK_TOKEN: ${{ github.token }}
+          REQUIRED_APPROVING_REVIEW_COUNT: ${{ github.event.inputs.required_approving_review_count || '0' }}
+          STRICT: "1"
+        run: |
+          export GH_TOKEN="${GH_ADMIN_TOKEN:-$GH_FALLBACK_TOKEN}"
+          ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+
+      - name: Verify API docs parity
+        run: ./scripts/verify-api-doc-commands.sh

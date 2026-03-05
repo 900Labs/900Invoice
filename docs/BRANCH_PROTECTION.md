@@ -81,4 +81,5 @@ REQUIRED_APPROVING_REVIEW_COUNT=1 ./scripts/verify-repo-policy.sh 900Labs/900Inv
 
 1. Run `apply-repo-policy.sh` after repository creation or transfer.
 2. Run `verify-repo-policy.sh` after any admin/settings changes.
-3. Record policy changes in sprint docs and changelog.
+3. Keep `.github/workflows/governance-audit.yml` enabled for scheduled drift detection.
+4. Record policy changes in sprint docs and changelog.
