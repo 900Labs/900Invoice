@@ -44,6 +44,11 @@ jobs:
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Verify repository policy (strict)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+
       - name: Verify API docs parity
         run: ./scripts/verify-api-doc-commands.sh
 

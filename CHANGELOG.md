@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CI step to enforce API docs command-catalog parity.
 - Updated deployment documentation to align with the current automated release model.
 - Enforced squash-only merge settings and auto-delete-on-merge at repository level.
+- Activated `main` branch protection and strict governance verification.
+- Added strict repository-policy verification step to release workflow.
 
 ### Fixed
 

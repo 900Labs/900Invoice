@@ -14,21 +14,28 @@ echo "Merge policy applied: squash-only + auto-delete merged branches."
 
 echo "Applying branch protection for ${REPO}:${BRANCH}..."
 set +e
+payload="$(jq -n '{
+  required_status_checks: {
+    strict: true,
+    contexts: ["Quality Gate"]
+  },
+  enforce_admins: true,
+  required_pull_request_reviews: {
+    dismiss_stale_reviews: true,
+    require_code_owner_reviews: false,
+    required_approving_review_count: 1
+  },
+  restrictions: null,
+  required_conversation_resolution: true,
+  allow_force_pushes: false,
+  allow_deletions: false,
+  block_creations: false,
+  required_linear_history: true
+}')"
 resp="$(
   gh api -X PUT "repos/${REPO}/branches/${BRANCH}/protection" \
     -H "Accept: application/vnd.github+json" \
-    -f required_status_checks.strict=true \
-    -f required_status_checks.contexts[]="Quality Gate" \
-    -f enforce_admins=true \
-    -f required_pull_request_reviews.dismiss_stale_reviews=true \
-    -f required_pull_request_reviews.require_code_owner_reviews=false \
-    -f required_pull_request_reviews.required_approving_review_count=1 \
-    -f required_conversation_resolution=true \
-    -f restrictions= \
-    -f allow_force_pushes=false \
-    -f allow_deletions=false \
-    -f block_creations=false \
-    -f required_linear_history=true 2>&1
+    --input - 2>&1 <<<"$payload"
 )"
 status=$?
 set -e
