@@ -191,6 +191,7 @@ Your data never leaves your machine unless you explicitly export it.
 - [Deployment Guide](docs/DEPLOYMENT.md) — build and distribute for all platforms
 - [Release Runbook](docs/RELEASE.md) — tagged release flow, artifacts, and checklist
 - [Branch Protection Policy](docs/BRANCH_PROTECTION.md) — required merge and branch safeguards for `main`
+- [Governance Audit](docs/GOVERNANCE_AUDIT.md) — scheduled drift detection for policy and docs parity
 - [Sprint Process](docs/SPRINT_PROCESS.md) — required sprint workflow and squash-merge policy
 - [Quality Gate](docs/QUALITY_GATE.md) — required pre-merge validation baseline
 - [Sprint Records](docs/sprints/) — delivered sprint scope, validation, and decision history

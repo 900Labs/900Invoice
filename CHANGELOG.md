@@ -16,8 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added security regression unit tests for CSV export sanitization and hardened PDF logo loading.
 - Added API docs parity verification script at `scripts/verify-api-doc-commands.sh`.
 - Added release-gate workflow at `.github/workflows/release.yml` for tagged releases.
+- Added scheduled governance-audit workflow at `.github/workflows/governance-audit.yml` for repository-policy drift detection.
 - Added release runbook at `docs/RELEASE.md`.
 - Added branch protection policy runbook at `docs/BRANCH_PROTECTION.md`.
+- Added governance-audit runbook at `docs/GOVERNANCE_AUDIT.md`.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
