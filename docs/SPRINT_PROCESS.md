@@ -94,6 +94,7 @@ A sprint is complete only when all are true:
 
 1. Acceptance criteria are met.
 2. Relevant tests/checks pass (or skipped checks are explicitly justified in the PR).
+   - For PRs targeting `main`, CI quality-gate checks in `.github/workflows/ci.yml` must pass.
 3. Documentation has been updated.
 4. PR is reviewed and merged via squash.
 5. Merge URL is shared with stakeholders.

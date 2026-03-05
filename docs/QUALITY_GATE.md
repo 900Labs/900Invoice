@@ -33,6 +33,20 @@ Notes:
 
 ---
 
+## CI Enforcement
+
+The same command baseline is enforced in GitHub Actions at:
+
+- `.github/workflows/ci.yml`
+
+Workflow behavior:
+
+1. Runs on every pull request to `main`.
+2. Runs on every push to `main`.
+3. Fails the workflow if any quality-gate command fails.
+
+---
+
 ## Security-Focused Checks
 
 When your change touches these areas, add explicit test evidence in the PR:
