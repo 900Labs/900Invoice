@@ -143,6 +143,7 @@ npm run check
 ```
 
 For complete pre-merge validation, run the standard gate in `docs/QUALITY_GATE.md`.
+The same gate is enforced in CI at `.github/workflows/ci.yml`.
 
 ---
 

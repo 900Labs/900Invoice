@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added a documented pre-merge validation baseline at `docs/QUALITY_GATE.md`.
+- Added CI enforcement of the quality gate at `.github/workflows/ci.yml` for pull requests and pushes to `main`.
 - Added `src-tauri/icons/icon.png` required for Tauri metadata/build compatibility.
 - Added root and Rust lockfiles (`package-lock.json`, `src-tauri/Cargo.lock`) for reproducible installs.
 
