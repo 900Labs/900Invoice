@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO="${1:-900Labs/900Invoice}"
 BRANCH="${2:-main}"
-STRICT="${STRICT:-0}"
+STRICT="${STRICT:-1}"
 
 fail=0
 

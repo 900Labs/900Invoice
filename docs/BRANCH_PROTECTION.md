@@ -2,6 +2,11 @@
 
 This document defines repository-level protection rules for `main`.
 
+Current status (2026-03-05):
+
+1. Repository merge policy is enforced.
+2. Branch protection on `main` is active.
+
 ---
 
 ## Policy Targets
@@ -57,7 +62,7 @@ Strict mode:
 STRICT=1 ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
 ```
 
-In strict mode, verification fails if branch protection is unavailable.
+`STRICT=1` is the default. Set `STRICT=0` only for temporary diagnostics.
 
 ---
 

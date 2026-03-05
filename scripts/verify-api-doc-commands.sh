@@ -26,9 +26,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-rg -o "commands::[a-z_]+::[a-z_]+" "$LIB_RS" \
-  | sed 's/.*:://' \
-  | sort -u > "$tmp_actual"
+if command -v rg >/dev/null 2>&1; then
+  rg -o "commands::[a-z_]+::[a-z_]+" "$LIB_RS" \
+    | sed 's/.*:://' \
+    | sort -u > "$tmp_actual"
+else
+  grep -oE "commands::[a-z_]+::[a-z_]+" "$LIB_RS" \
+    | sed 's/.*:://' \
+    | sort -u > "$tmp_actual"
+fi
 
 awk '
   /COMMAND_CATALOG_START/ { in_block = 1; next }

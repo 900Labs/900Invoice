@@ -27,7 +27,7 @@ Before creating a release tag:
 1. Ensure `main` is green in CI.
 2. Verify repository policy:
    - `./scripts/verify-repo-policy.sh 900Labs/900Invoice main`
-   - Use `STRICT=1` after branch protection is available.
+   - (`STRICT=1` is default and required for releases)
 3. Run local quality gate:
    - `./scripts/verify-api-doc-commands.sh`
    - `npm install`
