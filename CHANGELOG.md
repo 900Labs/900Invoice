@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `src-tauri/icons/icon.png` required for Tauri metadata/build compatibility.
 - Added root and Rust lockfiles (`package-lock.json`, `src-tauri/Cargo.lock`) for reproducible installs.
 - Added security regression unit tests for CSV export sanitization and hardened PDF logo loading.
+- Added API docs parity verification script at `scripts/verify-api-doc-commands.sh`.
 
 ### Changed
 
@@ -32,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reverts invoice status from `paid` when payment deletion causes outstanding balance.
 - Updated sprint/contributor process docs with quality-gate and parallel-agent safety guidance.
 - Updated repository links from `900-labs/900invoice` to `900Labs/900Invoice`.
+- Rewrote `docs/API.md` to match the live Tauri command surface in `src-tauri/src/lib.rs`.
+- Added CI step to enforce API docs command-catalog parity.
 
 ### Fixed
 

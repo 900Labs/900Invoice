@@ -19,6 +19,7 @@ This gate standardizes how contributors validate changes and produce reviewable 
 Run from repository root:
 
 ```bash
+./scripts/verify-api-doc-commands.sh
 npm install
 npm run check
 CARGO_TARGET_DIR=/tmp/900invoice-target cargo check --manifest-path src-tauri/Cargo.toml
@@ -30,6 +31,7 @@ Notes:
 
 1. `CARGO_TARGET_DIR` is intentional. It prevents lock contention when contributors or automation run concurrent Rust jobs.
 2. If your environment already uses a shared target dir, keep the same dedicated value for all Rust commands in that session.
+3. Keep the API command catalog block in `docs/API.md` synchronized with `src-tauri/src/lib.rs`.
 
 ---
 
