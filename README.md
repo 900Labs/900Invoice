@@ -189,6 +189,7 @@ Your data never leaves your machine unless you explicitly export it.
 - [Template Customization](docs/TEMPLATES.md) — customize your invoice PDF design
 - [Internationalization Guide](docs/I18N.md) — add languages, RTL support
 - [Deployment Guide](docs/DEPLOYMENT.md) — build and distribute for all platforms
+- [Release Runbook](docs/RELEASE.md) — tagged release flow, artifacts, and checklist
 - [Sprint Process](docs/SPRINT_PROCESS.md) — required sprint workflow and squash-merge policy
 - [Quality Gate](docs/QUALITY_GATE.md) — required pre-merge validation baseline
 - [Sprint Records](docs/sprints/) — delivered sprint scope, validation, and decision history

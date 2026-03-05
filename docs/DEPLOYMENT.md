@@ -272,12 +272,14 @@ cargo tauri signer generate -w ~/.tauri/900invoice.key
 
 ### GitHub Releases (Primary)
 
-The CI/CD pipeline (`.github/workflows/release.yml`) automatically creates a GitHub release with all platform binaries when a version tag is pushed:
+The release gate pipeline (`.github/workflows/release.yml`) runs on version tags and publishes release metadata artifacts (source tarball + checksum):
 
 ```bash
 git tag v1.0.1
 git push origin v1.0.1
 ```
+
+For the current release model and checklist, see `docs/RELEASE.md`.
 
 ### Linux Package Managers
 
@@ -316,10 +318,9 @@ end
 
 ## CI/CD Pipeline
 
-The GitHub Actions workflows handle automated building and releasing. See:
+The GitHub Actions workflows currently handle quality checks and release-gate automation:
 - `.github/workflows/ci.yml` — runs on every push and PR
-- `.github/workflows/release.yml` — runs on version tags (`v*`)
-- `.github/workflows/security.yml` — runs weekly
+- `.github/workflows/release.yml` — runs on version tags (`v*`) and manual dispatch
 
 ### Required Secrets for CI
 
@@ -327,17 +328,17 @@ Configure these in your GitHub repository Settings → Secrets and Variables →
 
 | Secret | Required For |
 |--------|-------------|
-| `GITHUB_TOKEN` | Built-in, for creating releases |
-| `TAURI_PRIVATE_KEY` | Auto-update signature |
-| `TAURI_KEY_PASSWORD` | Auto-update signature |
-| `APPLE_CERTIFICATE` | macOS code signing |
-| `APPLE_CERTIFICATE_PASSWORD` | macOS code signing |
-| `APPLE_SIGNING_IDENTITY` | macOS code signing |
-| `APPLE_ID` | macOS notarization |
-| `APPLE_PASSWORD` | macOS notarization |
-| `APPLE_TEAM_ID` | macOS notarization |
-| `WINDOWS_CERTIFICATE` | Windows code signing |
-| `WINDOWS_CERTIFICATE_PASSWORD` | Windows code signing |
+| `GITHUB_TOKEN` | Built-in token used for creating/updating GitHub releases |
+| `TAURI_PRIVATE_KEY` | Optional future auto-update signature pipeline |
+| `TAURI_KEY_PASSWORD` | Optional future auto-update signature pipeline |
+| `APPLE_CERTIFICATE` | Optional future macOS code signing pipeline |
+| `APPLE_CERTIFICATE_PASSWORD` | Optional future macOS code signing pipeline |
+| `APPLE_SIGNING_IDENTITY` | Optional future macOS code signing pipeline |
+| `APPLE_ID` | Optional future macOS notarization pipeline |
+| `APPLE_PASSWORD` | Optional future macOS notarization pipeline |
+| `APPLE_TEAM_ID` | Optional future macOS notarization pipeline |
+| `WINDOWS_CERTIFICATE` | Optional future Windows code signing pipeline |
+| `WINDOWS_CERTIFICATE_PASSWORD` | Optional future Windows code signing pipeline |
 
 ---
 
