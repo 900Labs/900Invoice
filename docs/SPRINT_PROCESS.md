@@ -81,6 +81,7 @@ Avoid vague titles such as "updates", "fix stuff", or "changes".
 
 - Merge method: **Squash and merge only**
 - Merge target: `main`
+- Repository merge settings are governed by `docs/BRANCH_PROTECTION.md`
 - Post-merge handoff:
   - Share merged PR URL
   - Confirm merge commit SHA

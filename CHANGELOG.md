@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added API docs parity verification script at `scripts/verify-api-doc-commands.sh`.
 - Added release-gate workflow at `.github/workflows/release.yml` for tagged releases.
 - Added release runbook at `docs/RELEASE.md`.
+- Added branch protection policy runbook at `docs/BRANCH_PROTECTION.md`.
+- Added repository policy automation scripts:
+  - `scripts/apply-repo-policy.sh`
+  - `scripts/verify-repo-policy.sh`
 
 ### Changed
 
@@ -38,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rewrote `docs/API.md` to match the live Tauri command surface in `src-tauri/src/lib.rs`.
 - Added CI step to enforce API docs command-catalog parity.
 - Updated deployment documentation to align with the current automated release model.
+- Enforced squash-only merge settings and auto-delete-on-merge at repository level.
 
 ### Fixed
 

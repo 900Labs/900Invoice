@@ -25,15 +25,18 @@ Not yet automated:
 Before creating a release tag:
 
 1. Ensure `main` is green in CI.
-2. Run local quality gate:
+2. Verify repository policy:
+   - `./scripts/verify-repo-policy.sh 900Labs/900Invoice main`
+   - Use `STRICT=1` after branch protection is available.
+3. Run local quality gate:
    - `./scripts/verify-api-doc-commands.sh`
    - `npm install`
    - `npm run check`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo check --manifest-path src-tauri/Cargo.toml`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings`
-3. Confirm changelog and sprint documentation are updated.
-4. Confirm the target version is reflected in release notes/changelog.
+4. Confirm changelog and sprint documentation are updated.
+5. Confirm the target version is reflected in release notes/changelog.
 
 ---
 
