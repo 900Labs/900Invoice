@@ -1,14 +1,14 @@
-/// PDF/HTML Invoice Engine for 900Invoice.
-///
-/// Generates print-ready HTML invoices with embedded CSS.
-/// The HTML serves as:
-///   1. Live preview in Tauri WebView
-///   2. PDF source via window.print() or headless browser
-///
-/// All money in i64 minor units; currency config drives formatting.
+//! PDF/HTML Invoice Engine for 900Invoice.
+//!
+//! Generates print-ready HTML invoices with embedded CSS.
+//! The HTML serves as:
+//!   1. Live preview in Tauri WebView
+//!   2. PDF source via window.print() or headless browser
+//!
+//! All money in i64 minor units; currency config drives formatting.
 
-use crate::models::invoice::InvoiceWithDetails;
 use crate::models::business::BusinessProfile;
+use crate::models::invoice::InvoiceWithDetails;
 use serde_json::{json, Value};
 
 // ---------------------------------------------------------------------------
@@ -25,18 +25,90 @@ struct CurrencyConfig {
 
 fn currency_config(code: &str) -> CurrencyConfig {
     match code {
-        "KES" => CurrencyConfig { symbol: "KSh", symbol_after: false, decimals: 2, thousands_sep: ',', decimal_sep: '.' },
-        "NGN" => CurrencyConfig { symbol: "\u{20A6}", symbol_after: false, decimals: 2, thousands_sep: ',', decimal_sep: '.' },
-        "ZAR" => CurrencyConfig { symbol: "R",   symbol_after: false, decimals: 2, thousands_sep: ',', decimal_sep: '.' },
-        "INR" => CurrencyConfig { symbol: "\u{20B9}", symbol_after: false, decimals: 2, thousands_sep: ',', decimal_sep: '.' },
-        "GHS" => CurrencyConfig { symbol: "GH\u{20B5}", symbol_after: false, decimals: 2, thousands_sep: ',', decimal_sep: '.' },
-        "TZS" => CurrencyConfig { symbol: "TSh", symbol_after: false, decimals: 0, thousands_sep: ',', decimal_sep: '.' },
-        "UGX" => CurrencyConfig { symbol: "USh", symbol_after: false, decimals: 0, thousands_sep: ',', decimal_sep: '.' },
-        "XOF" => CurrencyConfig { symbol: "CFA", symbol_after: false, decimals: 0, thousands_sep: ',', decimal_sep: '.' },
-        "XAF" => CurrencyConfig { symbol: "CFA", symbol_after: false, decimals: 0, thousands_sep: ',', decimal_sep: '.' },
-        "EUR" => CurrencyConfig { symbol: "\u{20AC}", symbol_after: false, decimals: 2, thousands_sep: ',', decimal_sep: '.' },
-        "USD" => CurrencyConfig { symbol: "$",   symbol_after: false, decimals: 2, thousands_sep: ',', decimal_sep: '.' },
-        _     => CurrencyConfig { symbol: "",    symbol_after: true,  decimals: 2, thousands_sep: ',', decimal_sep: '.' },
+        "KES" => CurrencyConfig {
+            symbol: "KSh",
+            symbol_after: false,
+            decimals: 2,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "NGN" => CurrencyConfig {
+            symbol: "\u{20A6}",
+            symbol_after: false,
+            decimals: 2,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "ZAR" => CurrencyConfig {
+            symbol: "R",
+            symbol_after: false,
+            decimals: 2,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "INR" => CurrencyConfig {
+            symbol: "\u{20B9}",
+            symbol_after: false,
+            decimals: 2,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "GHS" => CurrencyConfig {
+            symbol: "GH\u{20B5}",
+            symbol_after: false,
+            decimals: 2,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "TZS" => CurrencyConfig {
+            symbol: "TSh",
+            symbol_after: false,
+            decimals: 0,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "UGX" => CurrencyConfig {
+            symbol: "USh",
+            symbol_after: false,
+            decimals: 0,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "XOF" => CurrencyConfig {
+            symbol: "CFA",
+            symbol_after: false,
+            decimals: 0,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "XAF" => CurrencyConfig {
+            symbol: "CFA",
+            symbol_after: false,
+            decimals: 0,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "EUR" => CurrencyConfig {
+            symbol: "\u{20AC}",
+            symbol_after: false,
+            decimals: 2,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        "USD" => CurrencyConfig {
+            symbol: "$",
+            symbol_after: false,
+            decimals: 2,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
+        _ => CurrencyConfig {
+            symbol: "",
+            symbol_after: true,
+            decimals: 2,
+            thousands_sep: ',',
+            decimal_sep: '.',
+        },
     }
 }
 
@@ -61,12 +133,8 @@ pub fn format_currency_html(amount_minor: i64, currency_code: &str) -> String {
     let whole_str = format_with_thousands(whole, cfg.thousands_sep);
 
     let number_str = if cfg.decimals > 0 {
-        format!(
-            "{}{}{}",
-            whole_str,
-            cfg.decimal_sep,
-            format!("{:0>width$}", frac, width = cfg.decimals as usize)
-        )
+        let frac_str = format!("{:0>width$}", frac, width = cfg.decimals as usize);
+        format!("{}{}{}", whole_str, cfg.decimal_sep, frac_str)
     } else {
         whole_str
     };
@@ -89,7 +157,7 @@ fn format_with_thousands(n: i64, sep: char) -> String {
     let chars: Vec<char> = s.chars().collect();
     let mut result = String::new();
     for (i, c) in chars.iter().enumerate() {
-        if i > 0 && (chars.len() - i) % 3 == 0 {
+        if i > 0 && (chars.len() - i).is_multiple_of(3) {
             result.push(sep);
         }
         result.push(*c);
@@ -98,7 +166,7 @@ fn format_with_thousands(n: i64, sep: char) -> String {
 }
 
 /// Format quantity stored as qty*100 integer.
-fn format_quantity(qty: i32) -> String {
+fn format_quantity(qty: i64) -> String {
     let whole = qty / 100;
     let frac = (qty % 100).unsigned_abs();
     if frac == 0 {
@@ -135,21 +203,36 @@ fn nl2br(s: &str) -> String {
 
 fn status_colors(status: &str) -> (&'static str, &'static str) {
     match status.to_lowercase().as_str() {
-        "draft"     => ("#E5E7EB", "#374151"),
+        "draft" => ("#E5E7EB", "#374151"),
         "finalized" => ("#DBEAFE", "#1D4ED8"),
-        "sent"      => ("#FEF3C7", "#92400E"),
-        "paid"      => ("#D1FAE5", "#065F46"),
-        "void"      => ("#FEE2E2", "#991B1B"),
-        "overdue"   => ("#FEE2E2", "#991B1B"),
-        _           => ("#F3F4F6", "#6B7280"),
+        "sent" => ("#FEF3C7", "#92400E"),
+        "paid" => ("#D1FAE5", "#065F46"),
+        "void" => ("#FEE2E2", "#991B1B"),
+        "overdue" => ("#FEE2E2", "#991B1B"),
+        _ => ("#F3F4F6", "#6B7280"),
     }
 }
 
 /// Read logo file and return base64 data URI, or None if unreadable.
 fn load_logo_base64(path: &str) -> Option<String> {
-    let data = std::fs::read(path).ok()?;
+    let canonical = std::fs::canonicalize(path).ok()?;
+    let ext = canonical
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())?;
+    if !matches!(
+        ext.as_str(),
+        "png" | "jpg" | "jpeg" | "gif" | "svg" | "webp"
+    ) {
+        return None;
+    }
+    let size = std::fs::metadata(&canonical).ok()?.len();
+    if size > 2 * 1024 * 1024 {
+        return None;
+    }
+
+    let data = std::fs::read(&canonical).ok()?;
     let b64 = base64_encode(&data);
-    let ext = path.rsplit('.').next().unwrap_or("").to_lowercase();
     let mime = match ext.as_str() {
         "png" => "image/png",
         "jpg" | "jpeg" => "image/jpeg",
@@ -163,17 +246,33 @@ fn load_logo_base64(path: &str) -> Option<String> {
 
 fn base64_encode(input: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity((input.len() + 2) / 3 * 4);
+    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
     let mut i = 0;
     while i < input.len() {
         let b0 = input[i] as u32;
-        let b1 = if i + 1 < input.len() { input[i + 1] as u32 } else { 0 };
-        let b2 = if i + 2 < input.len() { input[i + 2] as u32 } else { 0 };
+        let b1 = if i + 1 < input.len() {
+            input[i + 1] as u32
+        } else {
+            0
+        };
+        let b2 = if i + 2 < input.len() {
+            input[i + 2] as u32
+        } else {
+            0
+        };
         let n = (b0 << 16) | (b1 << 8) | b2;
         out.push(CHARS[((n >> 18) & 0x3F) as usize] as char);
         out.push(CHARS[((n >> 12) & 0x3F) as usize] as char);
-        if i + 1 < input.len() { out.push(CHARS[((n >> 6) & 0x3F) as usize] as char); } else { out.push('='); }
-        if i + 2 < input.len() { out.push(CHARS[(n & 0x3F) as usize] as char); } else { out.push('='); }
+        if i + 1 < input.len() {
+            out.push(CHARS[((n >> 6) & 0x3F) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if i + 2 < input.len() {
+            out.push(CHARS[(n & 0x3F) as usize] as char);
+        } else {
+            out.push('=');
+        }
         i += 3;
     }
     out
@@ -199,13 +298,29 @@ pub fn generate_invoice_html(
         "letter" => "@page { size: letter; margin: 0; }",
         _ => "@page { size: A4; margin: 0; }",
     };
-    let page_w = if paper_size.to_lowercase() == "letter" { "816px" } else { "794px" };
-    let page_h = if paper_size.to_lowercase() == "letter" { "1056px" } else { "1123px" };
+    let page_w = if paper_size.to_lowercase() == "letter" {
+        "816px"
+    } else {
+        "794px"
+    };
+    let page_h = if paper_size.to_lowercase() == "letter" {
+        "1056px"
+    } else {
+        "1123px"
+    };
 
     // Logo
-    let logo_html = business.logo_path.as_ref()
+    let logo_html = business
+        .logo_path
+        .as_ref()
         .and_then(|p| load_logo_base64(p))
-        .map(|uri| format!(r#"<img src="{}" alt="{}" class="logo" />"#, uri, html_escape(&business.name)))
+        .map(|uri| {
+            format!(
+                r#"<img src="{}" alt="{}" class="logo" />"#,
+                uri,
+                html_escape(&business.name)
+            )
+        })
         .unwrap_or_default();
 
     // Business info
@@ -216,11 +331,17 @@ pub fn generate_invoice_html(
     let biz_web = opt_div("", &business.website);
 
     // Client info
-    let client = &invoice.client;
-    let cli_addr = build_address_lines(&client.address, &client.city, &client.country);
-    let cli_email = opt_div("", &client.email);
-    let cli_phone = opt_div("", &client.phone);
-    let cli_tax = opt_div("Tax ID: ", &client.tax_id);
+    let client = invoice.client.as_ref();
+    let cli_name_text = client.map(|c| c.name.as_str()).unwrap_or("Unknown Client");
+    let cli_addr = build_address_lines(
+        client.map(|c| c.address.as_str()).unwrap_or(""),
+        client.map(|c| c.city.as_str()).unwrap_or(""),
+        client.map(|c| c.country.as_str()).unwrap_or(""),
+    );
+    let cli_email = opt_div("", client.map(|c| c.email.as_str()).unwrap_or(""));
+    let cli_phone = opt_div("", client.map(|c| c.phone.as_str()).unwrap_or(""));
+    let cli_tax = opt_div("Tax ID: ", client.map(|c| c.tax_id.as_str()).unwrap_or(""));
+    let inv_num_text = invoice.invoice_number.as_deref().unwrap_or("DRAFT");
 
     // Status badge
     let (status_bg, status_fg) = status_colors(&invoice.status);
@@ -232,8 +353,13 @@ pub fn generate_invoice_html(
     let mut line_rows = String::new();
     for (idx, item) in sorted_items.iter().enumerate() {
         let disc_note = if item.discount_bps > 0 {
-            format!(r#"<div class="item-note">Disc: {}</div>"#, format_rate_bps(item.discount_bps))
-        } else { String::new() };
+            format!(
+                r#"<div class="item-note">Disc: {}</div>"#,
+                format_rate_bps(item.discount_bps)
+            )
+        } else {
+            String::new()
+        };
         line_rows.push_str(&format!(
             r#"<tr>
               <td class="num">{}</td>
@@ -248,7 +374,11 @@ pub fn generate_invoice_html(
             disc_note,
             format_quantity(item.quantity),
             format_currency_html(item.unit_price_minor, currency),
-            if item.tax_rate_bps > 0 { format_rate_bps(item.tax_rate_bps) } else { "—".into() },
+            if item.tax_rate_bps > 0 {
+                format_rate_bps(item.tax_rate_bps)
+            } else {
+                "—".into()
+            },
             format_currency_html(item.line_total_minor, currency),
         ));
     }
@@ -266,7 +396,8 @@ pub fn generate_invoice_html(
         } else {
             tax_rows.push_str(&format!(
                 r#"<tr><td class="slbl">{}</td><td class="r">{}</td></tr>"#,
-                html_escape(&label), amt
+                html_escape(&label),
+                amt
             ));
         }
     }
@@ -277,10 +408,14 @@ pub fn generate_invoice_html(
             r#"<tr><td class="slbl">Discount</td><td class="r red">-{}</td></tr>"#,
             format_currency_html(invoice.discount_minor, currency)
         )
-    } else { String::new() };
+    } else {
+        String::new()
+    };
 
     // Payment row
-    let balance = invoice.total_minor.saturating_sub(invoice.amount_paid_minor);
+    let balance = invoice
+        .total_minor
+        .saturating_sub(invoice.amount_paid_minor);
     let paid_rows = if invoice.amount_paid_minor > 0 {
         format!(
             r#"<tr class="sep"><td colspan="2"><hr/></td></tr>
@@ -289,7 +424,9 @@ pub fn generate_invoice_html(
             format_currency_html(invoice.amount_paid_minor, currency),
             format_currency_html(balance, currency),
         )
-    } else { String::new() };
+    } else {
+        String::new()
+    };
 
     // Payment details
     let pay_details = build_payment_html(business);
@@ -300,13 +437,17 @@ pub fn generate_invoice_html(
             r#"<div class="section"><div class="stitle">NOTES</div><div class="notetext">{}</div></div>"#,
             nl2br(&html_escape(&invoice.notes))
         )
-    } else { String::new() };
+    } else {
+        String::new()
+    };
     let terms_html = if !invoice.terms.trim().is_empty() {
         format!(
             r#"<div class="section"><div class="stitle">TERMS &amp; CONDITIONS</div><div class="notetext">{}</div></div>"#,
             nl2br(&html_escape(&invoice.terms))
         )
-    } else { String::new() };
+    } else {
+        String::new()
+    };
 
     let footer_text = if invoice.footer.trim().is_empty() {
         "Generated by 900Invoice &mdash; 900labs.com/open-source".to_string()
@@ -314,7 +455,8 @@ pub fn generate_invoice_html(
         html_escape(&invoice.footer)
     };
 
-    format!(r#"<!DOCTYPE html>
+    format!(
+        r#"<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -460,7 +602,7 @@ table.sum td{{padding:3px 0;vertical-align:middle}}
         page_h = page_h,
         sbg = status_bg,
         sfg = status_fg,
-        inv_num = html_escape(&invoice.invoice_number),
+        inv_num = html_escape(inv_num_text),
         biz_name = html_escape(&business.name),
         logo_html = logo_html,
         biz_addr = biz_addr,
@@ -471,7 +613,7 @@ table.sum td{{padding:3px 0;vertical-align:middle}}
         issue_date = html_escape(&invoice.issue_date),
         due_date = html_escape(&invoice.due_date),
         status_label = status_label,
-        cli_name = html_escape(&client.name),
+        cli_name = html_escape(cli_name_text),
         cli_addr = cli_addr,
         cli_email = cli_email,
         cli_phone = cli_phone,
@@ -496,9 +638,9 @@ fn build_address_lines(address: &str, city: &str, country: &str) -> String {
     }
     let cc = match (city.trim().is_empty(), country.trim().is_empty()) {
         (false, false) => format!("{}, {}", city, country),
-        (false, true)  => city.to_string(),
-        (true, false)  => country.to_string(),
-        (true, true)   => String::new(),
+        (false, true) => city.to_string(),
+        (true, false) => country.to_string(),
+        (true, true) => String::new(),
     };
     if !cc.is_empty() {
         s.push_str(&format!("<div>{}</div>", html_escape(&cc)));
@@ -523,26 +665,48 @@ fn build_payment_html(business: &BusinessProfile) -> String {
     let bank_blk = if has_bank {
         let mut parts = String::new();
         if !business.bank_name.is_empty() {
-            parts.push_str(&format!("<p><strong>Bank:</strong> {}</p>", html_escape(&business.bank_name)));
+            parts.push_str(&format!(
+                "<p><strong>Bank:</strong> {}</p>",
+                html_escape(&business.bank_name)
+            ));
         }
         if !business.bank_account_number.is_empty() {
-            parts.push_str(&format!("<p><strong>Account #:</strong> {}</p>", html_escape(&business.bank_account_number)));
+            parts.push_str(&format!(
+                "<p><strong>Account #:</strong> {}</p>",
+                html_escape(&business.bank_account_number)
+            ));
         }
         if !business.bank_routing_number.is_empty() {
-            parts.push_str(&format!("<p><strong>Routing #:</strong> {}</p>", html_escape(&business.bank_routing_number)));
+            parts.push_str(&format!(
+                "<p><strong>Routing #:</strong> {}</p>",
+                html_escape(&business.bank_routing_number)
+            ));
         }
-        format!(r#"<div class="pay-blk"><div class="stitle" style="margin-bottom:4px">Bank Transfer</div>{}</div>"#, parts)
-    } else { String::new() };
+        format!(
+            r#"<div class="pay-blk"><div class="stitle" style="margin-bottom:4px">Bank Transfer</div>{}</div>"#,
+            parts
+        )
+    } else {
+        String::new()
+    };
 
     let mobile_blk = if has_mobile {
         let prov = if !business.mobile_money_provider.is_empty() {
-            format!("<p><strong>Provider:</strong> {}</p>", html_escape(&business.mobile_money_provider))
-        } else { String::new() };
+            format!(
+                "<p><strong>Provider:</strong> {}</p>",
+                html_escape(&business.mobile_money_provider)
+            )
+        } else {
+            String::new()
+        };
         format!(
             r#"<div class="pay-blk"><div class="stitle" style="margin-bottom:4px">Mobile Money</div>{}<p><strong>Number:</strong> {}</p></div>"#,
-            prov, html_escape(&business.mobile_money_number)
+            prov,
+            html_escape(&business.mobile_money_number)
         )
-    } else { String::new() };
+    } else {
+        String::new()
+    };
 
     format!(
         r#"<div class="section"><div class="stitle">Payment Details</div><div class="pay-wrap">{}{}</div></div>"#,
@@ -555,51 +719,98 @@ fn build_payment_html(business: &BusinessProfile) -> String {
 // ---------------------------------------------------------------------------
 
 /// Generate JSON preview data for frontend rendering.
-pub fn get_preview_data(
-    invoice: &InvoiceWithDetails,
-    business: &BusinessProfile,
-) -> Value {
+pub fn get_preview_data(invoice: &InvoiceWithDetails, business: &BusinessProfile) -> Value {
     let currency = &invoice.currency_code;
-    let balance = invoice.total_minor.saturating_sub(invoice.amount_paid_minor);
+    let balance = invoice
+        .total_minor
+        .saturating_sub(invoice.amount_paid_minor);
 
-    let line_items: Vec<Value> = invoice.line_items.iter()
-        .map(|item| json!({
-            "id": item.id,
-            "description": item.description,
-            "quantity": format_quantity(item.quantity),
-            "quantity_raw": item.quantity,
-            "unit_price": format_currency_html(item.unit_price_minor, currency),
-            "unit_price_minor": item.unit_price_minor,
-            "tax_rate": format_rate_bps(item.tax_rate_bps),
-            "tax_rate_bps": item.tax_rate_bps,
-            "discount": format_rate_bps(item.discount_bps),
-            "discount_bps": item.discount_bps,
-            "line_total": format_currency_html(item.line_total_minor, currency),
-            "line_total_minor": item.line_total_minor,
-            "sort_order": item.sort_order,
-        }))
+    let line_items: Vec<Value> = invoice
+        .line_items
+        .iter()
+        .map(|item| {
+            json!({
+                "id": item.id,
+                "description": item.description,
+                "quantity": format_quantity(item.quantity),
+                "quantity_raw": item.quantity,
+                "unit_price": format_currency_html(item.unit_price_minor, currency),
+                "unit_price_minor": item.unit_price_minor,
+                "tax_rate": format_rate_bps(item.tax_rate_bps),
+                "tax_rate_bps": item.tax_rate_bps,
+                "discount": format_rate_bps(item.discount_bps),
+                "discount_bps": item.discount_bps,
+                "line_total": format_currency_html(item.line_total_minor, currency),
+                "line_total_minor": item.line_total_minor,
+                "sort_order": item.sort_order,
+            })
+        })
         .collect();
 
-    let taxes: Vec<Value> = invoice.taxes.iter()
-        .map(|t| json!({
-            "name": t.tax_name,
-            "rate": format_rate_bps(t.tax_rate_bps),
-            "rate_bps": t.tax_rate_bps,
-            "amount": format_currency_html(t.tax_amount_minor, currency),
-            "amount_minor": t.tax_amount_minor,
-            "is_withholding": t.is_withholding,
-        }))
+    let taxes: Vec<Value> = invoice
+        .taxes
+        .iter()
+        .map(|t| {
+            json!({
+                "name": t.tax_name,
+                "rate": format_rate_bps(t.tax_rate_bps),
+                "rate_bps": t.tax_rate_bps,
+                "amount": format_currency_html(t.tax_amount_minor, currency),
+                "amount_minor": t.tax_amount_minor,
+                "is_withholding": t.is_withholding,
+            })
+        })
         .collect();
 
-    let payments: Vec<Value> = invoice.payments.iter()
-        .map(|p| json!({
-            "amount": format_currency_html(p.amount_minor, &p.currency_code),
-            "amount_minor": p.amount_minor,
-            "currency_code": p.currency_code,
-            "payment_method": p.payment_method,
-            "paid_at": p.paid_at,
-        }))
+    let payments: Vec<Value> = invoice
+        .payments
+        .iter()
+        .map(|p| {
+            json!({
+                "amount": format_currency_html(p.amount_minor, &p.currency_code),
+                "amount_minor": p.amount_minor,
+                "currency_code": p.currency_code,
+                "payment_method": p.payment_method,
+                "paid_at": p.paid_at,
+            })
+        })
         .collect();
+
+    let client_name = invoice
+        .client
+        .as_ref()
+        .map(|c| c.name.clone())
+        .unwrap_or_default();
+    let client_email = invoice
+        .client
+        .as_ref()
+        .map(|c| c.email.clone())
+        .unwrap_or_default();
+    let client_phone = invoice
+        .client
+        .as_ref()
+        .map(|c| c.phone.clone())
+        .unwrap_or_default();
+    let client_address = invoice
+        .client
+        .as_ref()
+        .map(|c| c.address.clone())
+        .unwrap_or_default();
+    let client_city = invoice
+        .client
+        .as_ref()
+        .map(|c| c.city.clone())
+        .unwrap_or_default();
+    let client_country = invoice
+        .client
+        .as_ref()
+        .map(|c| c.country.clone())
+        .unwrap_or_default();
+    let client_tax_id = invoice
+        .client
+        .as_ref()
+        .map(|c| c.tax_id.clone())
+        .unwrap_or_default();
 
     json!({
         "invoice": {
@@ -626,13 +837,13 @@ pub fn get_preview_data(
             "balance_due_minor": balance,
         },
         "client": {
-            "name": invoice.client.name,
-            "email": invoice.client.email,
-            "phone": invoice.client.phone,
-            "address": invoice.client.address,
-            "city": invoice.client.city,
-            "country": invoice.client.country,
-            "tax_id": invoice.client.tax_id,
+            "name": client_name,
+            "email": client_email,
+            "phone": client_phone,
+            "address": client_address,
+            "city": client_city,
+            "country": client_country,
+            "tax_id": client_tax_id,
         },
         "business": {
             "name": business.name,

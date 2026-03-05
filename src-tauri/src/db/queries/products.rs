@@ -18,8 +18,7 @@ fn row_to_product(row: &rusqlite::Row<'_>) -> Result<Product> {
     })
 }
 
-const SELECT_COLS: &str =
-    "id, name, description, default_price_minor, default_currency,
+const SELECT_COLS: &str = "id, name, description, default_price_minor, default_currency,
      default_tax_rate_bps, unit, is_active, created_at, updated_at";
 
 pub fn list_all(conn: &Connection) -> Result<Vec<Product>> {
@@ -61,26 +60,47 @@ pub fn insert(conn: &Connection, c: &CreateProduct) -> Result<Product> {
 
 pub fn update(conn: &Connection, id: &str, u: &UpdateProduct) -> Result<Product> {
     if let Some(v) = &u.name {
-        conn.execute("UPDATE products SET name=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE products SET name=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.description {
-        conn.execute("UPDATE products SET description=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE products SET description=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.default_price_minor {
-        conn.execute("UPDATE products SET default_price_minor=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE products SET default_price_minor=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.default_currency {
-        conn.execute("UPDATE products SET default_currency=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE products SET default_currency=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.default_tax_rate_bps {
-        conn.execute("UPDATE products SET default_tax_rate_bps=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE products SET default_tax_rate_bps=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.unit {
-        conn.execute("UPDATE products SET unit=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE products SET unit=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.is_active {
         let flag = if *v { 1i32 } else { 0i32 };
-        conn.execute("UPDATE products SET is_active=?1, updated_at=datetime('now') WHERE id=?2", params![flag, id])?;
+        conn.execute(
+            "UPDATE products SET is_active=?1, updated_at=datetime('now') WHERE id=?2",
+            params![flag, id],
+        )?;
     }
     super::changelog::insert_entry(conn, "products", id, "UPDATE", "{}")?;
     get_by_id(conn, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)

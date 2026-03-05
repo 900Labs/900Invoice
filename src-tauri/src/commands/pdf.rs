@@ -10,10 +10,7 @@ type DbConn = Mutex<Connection>;
 /// In v1.0 the HTML is base64-encoded and returned as a "PDF" so the frontend
 /// can open it in a webview or print dialog.
 #[tauri::command]
-pub fn generate_invoice_pdf(
-    db: State<'_, DbConn>,
-    invoice_id: String,
-) -> Result<String, String> {
+pub fn generate_invoice_pdf(db: State<'_, DbConn>, invoice_id: String) -> Result<String, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
 
     let invoice = db::queries::invoices::get_with_details(&conn, &invoice_id)
@@ -24,7 +21,7 @@ pub fn generate_invoice_pdf(
         .map_err(|e| e.to_string())?
         .unwrap_or_else(default_business);
 
-    let html = pdf_engine::generate_invoice_html(&invoice, &business);
+    let html = pdf_engine::generate_invoice_html(&invoice, &business, "a4", "en");
 
     // Base64-encode the HTML for transport
     use std::io::Write;
@@ -49,12 +46,14 @@ pub fn get_pdf_preview_data(
         .map_err(|e| e.to_string())?
         .unwrap_or_else(default_business);
 
-    let html = pdf_engine::generate_invoice_html(&invoice, &business);
+    let html = pdf_engine::generate_invoice_html(&invoice, &business, "a4", "en");
+    let preview = pdf_engine::get_preview_data(&invoice, &business);
 
     serde_json::to_value(serde_json::json!({
         "invoice": invoice,
         "business": business,
         "html": html,
+        "preview": preview,
     }))
     .map_err(|e| e.to_string())
 }
@@ -87,7 +86,7 @@ fn default_business() -> crate::models::business::BusinessProfile {
 /// Minimal base64 encoder (no external crate required).
 fn base64_encode(input: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity((input.len() + 2) / 3 * 4);
+    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
     for chunk in input.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };
@@ -95,8 +94,16 @@ fn base64_encode(input: &[u8]) -> String {
         let combined = (b0 << 16) | (b1 << 8) | b2;
         out.push(CHARS[((combined >> 18) & 0x3f) as usize] as char);
         out.push(CHARS[((combined >> 12) & 0x3f) as usize] as char);
-        out.push(if chunk.len() > 1 { CHARS[((combined >> 6) & 0x3f) as usize] as char } else { '=' });
-        out.push(if chunk.len() > 2 { CHARS[(combined & 0x3f) as usize] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            CHARS[((combined >> 6) & 0x3f) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            CHARS[(combined & 0x3f) as usize] as char
+        } else {
+            '='
+        });
     }
     out
 }

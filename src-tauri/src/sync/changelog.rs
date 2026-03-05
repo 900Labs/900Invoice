@@ -1,7 +1,8 @@
-/// Changelog module for 900Invoice multi-device sync.
-///
-/// Every INSERT, UPDATE, and DELETE on key tables is recorded here.
-/// Downstream sync logic (cloud, peer-to-peer) can query changes since a timestamp.
+#![allow(dead_code)]
+//! Changelog module for 900Invoice multi-device sync.
+//!
+//! Every INSERT, UPDATE, and DELETE on key tables is recorded here.
+//! Downstream sync logic (cloud, peer-to-peer) can query changes since a timestamp.
 
 use rusqlite::Connection;
 
@@ -79,10 +80,7 @@ pub fn record_change_at(
 ///
 /// Returns entries in chronological order (oldest first).
 /// `since` is inclusive: entries with `timestamp >= since` are returned.
-pub fn get_changes_since(
-    conn: &Connection,
-    since: &str,
-) -> Result<Vec<ChangelogEntry>, String> {
+pub fn get_changes_since(conn: &Connection, since: &str) -> Result<Vec<ChangelogEntry>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT id, table_name, row_id, operation, payload, timestamp \
@@ -215,7 +213,9 @@ fn validate_operation(operation: &str) -> Result<(), String> {
 }
 
 fn now_iso() -> String {
-    chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.3f").to_string()
+    chrono::Local::now()
+        .format("%Y-%m-%dT%H:%M:%S%.3f")
+        .to_string()
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +246,14 @@ mod tests {
     #[test]
     fn test_record_change_insert() {
         let conn = setup_db();
-        record_change(&conn, "invoices", "inv-001", "INSERT", r#"{"status":"draft"}"#).unwrap();
+        record_change(
+            &conn,
+            "invoices",
+            "inv-001",
+            "INSERT",
+            r#"{"status":"draft"}"#,
+        )
+        .unwrap();
         let all = get_all_changes(&conn).unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].table_name, "invoices");
@@ -258,7 +265,14 @@ mod tests {
     fn test_record_change_update_delete() {
         let conn = setup_db();
         record_change(&conn, "clients", "cli-001", "INSERT", r#"{"name":"Acme"}"#).unwrap();
-        record_change(&conn, "clients", "cli-001", "UPDATE", r#"{"name":"Acme Corp"}"#).unwrap();
+        record_change(
+            &conn,
+            "clients",
+            "cli-001",
+            "UPDATE",
+            r#"{"name":"Acme Corp"}"#,
+        )
+        .unwrap();
         record_change(&conn, "clients", "cli-001", "DELETE", r#"{"id":"cli-001"}"#).unwrap();
         let all = get_all_changes(&conn).unwrap();
         assert_eq!(all.len(), 3);
@@ -277,9 +291,33 @@ mod tests {
     fn test_get_changes_since() {
         let conn = setup_db();
         // Record with explicit past timestamp
-        record_change_at(&conn, "invoices", "inv-001", "INSERT", "{}", "2026-01-01T00:00:00").unwrap();
-        record_change_at(&conn, "invoices", "inv-002", "INSERT", "{}", "2026-06-01T00:00:00").unwrap();
-        record_change_at(&conn, "invoices", "inv-003", "UPDATE", "{}", "2026-12-01T00:00:00").unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-001",
+            "INSERT",
+            "{}",
+            "2026-01-01T00:00:00",
+        )
+        .unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-002",
+            "INSERT",
+            "{}",
+            "2026-06-01T00:00:00",
+        )
+        .unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-003",
+            "UPDATE",
+            "{}",
+            "2026-12-01T00:00:00",
+        )
+        .unwrap();
 
         let since = get_changes_since(&conn, "2026-05-01T00:00:00").unwrap();
         assert_eq!(since.len(), 2);
@@ -297,8 +335,24 @@ mod tests {
     #[test]
     fn test_count_changes_since() {
         let conn = setup_db();
-        record_change_at(&conn, "invoices", "inv-001", "INSERT", "{}", "2026-01-01T00:00:00").unwrap();
-        record_change_at(&conn, "invoices", "inv-002", "INSERT", "{}", "2026-02-01T00:00:00").unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-001",
+            "INSERT",
+            "{}",
+            "2026-01-01T00:00:00",
+        )
+        .unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-002",
+            "INSERT",
+            "{}",
+            "2026-02-01T00:00:00",
+        )
+        .unwrap();
         let count = count_changes_since(&conn, "2026-01-15T00:00:00").unwrap();
         assert_eq!(count, 1);
     }
@@ -307,8 +361,24 @@ mod tests {
     fn test_get_latest_timestamp() {
         let conn = setup_db();
         assert!(get_latest_timestamp(&conn).unwrap().is_none());
-        record_change_at(&conn, "invoices", "inv-001", "INSERT", "{}", "2026-03-01T10:00:00").unwrap();
-        record_change_at(&conn, "invoices", "inv-002", "INSERT", "{}", "2026-03-05T15:30:00").unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-001",
+            "INSERT",
+            "{}",
+            "2026-03-01T10:00:00",
+        )
+        .unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-002",
+            "INSERT",
+            "{}",
+            "2026-03-05T15:30:00",
+        )
+        .unwrap();
         let latest = get_latest_timestamp(&conn).unwrap();
         assert_eq!(latest, Some("2026-03-05T15:30:00".to_string()));
     }
@@ -316,15 +386,41 @@ mod tests {
     #[test]
     fn test_get_changes_for_table_since() {
         let conn = setup_db();
-        record_change_at(&conn, "invoices", "inv-001", "INSERT", "{}", "2026-01-01T00:00:00").unwrap();
-        record_change_at(&conn, "clients", "cli-001", "INSERT", "{}", "2026-01-02T00:00:00").unwrap();
-        record_change_at(&conn, "invoices", "inv-002", "UPDATE", "{}", "2026-01-03T00:00:00").unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-001",
+            "INSERT",
+            "{}",
+            "2026-01-01T00:00:00",
+        )
+        .unwrap();
+        record_change_at(
+            &conn,
+            "clients",
+            "cli-001",
+            "INSERT",
+            "{}",
+            "2026-01-02T00:00:00",
+        )
+        .unwrap();
+        record_change_at(
+            &conn,
+            "invoices",
+            "inv-002",
+            "UPDATE",
+            "{}",
+            "2026-01-03T00:00:00",
+        )
+        .unwrap();
 
-        let invoice_changes = get_changes_for_table_since(&conn, "invoices", "2025-01-01T00:00:00").unwrap();
+        let invoice_changes =
+            get_changes_for_table_since(&conn, "invoices", "2025-01-01T00:00:00").unwrap();
         assert_eq!(invoice_changes.len(), 2);
         assert!(invoice_changes.iter().all(|c| c.table_name == "invoices"));
 
-        let client_changes = get_changes_for_table_since(&conn, "clients", "2025-01-01T00:00:00").unwrap();
+        let client_changes =
+            get_changes_for_table_since(&conn, "clients", "2025-01-01T00:00:00").unwrap();
         assert_eq!(client_changes.len(), 1);
     }
 }

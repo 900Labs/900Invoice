@@ -69,8 +69,11 @@ pub fn calculate_invoice_taxes(
         db::queries::line_items::list_for_invoice(&conn, &invoice_id).map_err(|e| e.to_string())?;
     let tax_rates = db::queries::taxes::list_all(&conn).map_err(|e| e.to_string())?;
 
-    let summary =
-        tax_calculator::calculate_invoice_taxes(&line_items, &tax_rates, invoice.uses_inclusive_taxes);
+    let summary = tax_calculator::calculate_invoice_taxes_from_models(
+        &line_items,
+        &tax_rates,
+        invoice.uses_inclusive_taxes,
+    );
 
     // Delete existing invoice taxes and re-insert
     db::queries::taxes::delete_for_invoice(&conn, &invoice_id).map_err(|e| e.to_string())?;

@@ -21,6 +21,7 @@ The goal is simple: every sprint must leave a high-quality paper trail that help
 2. Define sprint scope and acceptance criteria.
 3. Implement code and documentation updates together.
 4. Run validation commands relevant to the change.
+   - Use `docs/QUALITY_GATE.md` as the default validation baseline.
 5. Open a Pull Request with a complete title and body.
 6. Address review feedback.
 7. **Squash and merge**.
@@ -43,6 +44,19 @@ Each sprint must include the following:
    - Risks and mitigations
    - Documentation impact
 3. Updated documentation for any behavior, API, schema, workflow, or contributor expectation that changed.
+
+---
+
+## Parallel Agent Safety
+
+When using multiple automation agents in one sprint:
+
+1. Assign each agent to an isolated workspace.
+2. Prevent overlapping file ownership across agents.
+3. Keep a single integration checkout for final `git` operations.
+4. Merge reviewed changes into the integration checkout sequentially.
+
+This prevents `git` metadata corruption and keeps change history auditable.
 
 ---
 

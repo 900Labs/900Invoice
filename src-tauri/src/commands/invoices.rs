@@ -19,8 +19,7 @@ pub fn list_invoices(db: State<'_, DbConn>) -> Result<serde_json::Value, String>
 #[tauri::command]
 pub fn get_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let invoice = db::queries::invoices::get_with_details(&conn, &id)
-        .map_err(|e| e.to_string())?;
+    let invoice = db::queries::invoices::get_with_details(&conn, &id).map_err(|e| e.to_string())?;
     match invoice {
         Some(i) => serde_json::to_value(i).map_err(|e| e.to_string()),
         None => Err(format!("Invoice not found: {}", id)),
@@ -44,14 +43,15 @@ pub fn update_invoice(
     update: UpdateInvoice,
 ) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let updated =
-        db::queries::invoices::update(&conn, &id, &update).map_err(|e| e.to_string())?;
+    ensure_invoice_is_draft(&conn, &id)?;
+    let updated = db::queries::invoices::update(&conn, &id, &update).map_err(|e| e.to_string())?;
     serde_json::to_value(updated).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_invoice(db: State<'_, DbConn>, id: String) -> Result<(), String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
+    ensure_invoice_is_draft(&conn, &id)?;
     db::queries::invoices::delete(&conn, &id).map_err(|e| e.to_string())
 }
 
@@ -73,8 +73,7 @@ pub fn finalize_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json:
 
     // Assign invoice number if not already set
     if invoice.invoice_number.is_none() {
-        let number =
-            invoice_numbering::generate_invoice_number(&conn, "default")?;
+        let number = invoice_numbering::generate_invoice_number(&conn, "default")?;
         db::queries::invoices::set_invoice_number(&conn, &id, &number)
             .map_err(|e| e.to_string())?;
     }
@@ -113,10 +112,7 @@ pub fn void_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json::Val
 }
 
 #[tauri::command]
-pub fn duplicate_invoice(
-    db: State<'_, DbConn>,
-    id: String,
-) -> Result<serde_json::Value, String> {
+pub fn duplicate_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
 
     let original = db::queries::invoices::get_with_details(&conn, &id)
@@ -162,10 +158,7 @@ pub fn duplicate_invoice(
 }
 
 #[tauri::command]
-pub fn search_invoices(
-    db: State<'_, DbConn>,
-    query: String,
-) -> Result<serde_json::Value, String> {
+pub fn search_invoices(db: State<'_, DbConn>, query: String) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
     let results = db::queries::invoices::search(&conn, &query).map_err(|e| e.to_string())?;
     serde_json::to_value(results).map_err(|e| e.to_string())
@@ -181,10 +174,9 @@ pub fn recalculate_invoice_totals(conn: &Connection, invoice_id: &str) -> Result
         db::queries::line_items::list_for_invoice(conn, invoice_id).map_err(|e| e.to_string())?;
 
     // Get active tax rates referenced by line items (unique bps)
-    let tax_rates =
-        db::queries::taxes::list_all(conn).map_err(|e| e.to_string())?;
+    let tax_rates = db::queries::taxes::list_all(conn).map_err(|e| e.to_string())?;
 
-    let summary = tax_calculator::calculate_invoice_taxes(
+    let summary = tax_calculator::calculate_invoice_taxes_from_models(
         &line_items,
         &tax_rates,
         invoice.uses_inclusive_taxes,
@@ -199,6 +191,21 @@ pub fn recalculate_invoice_totals(conn: &Connection, invoice_id: &str) -> Result
         summary.total_minor - invoice.discount_minor,
     )
     .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+pub fn ensure_invoice_is_draft(conn: &Connection, invoice_id: &str) -> Result<(), String> {
+    let invoice = db::queries::invoices::get_by_id(conn, invoice_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Invoice not found: {}", invoice_id))?;
+
+    if invoice.status != "draft" {
+        return Err(format!(
+            "CONFLICT: invoice {} is not in DRAFT status (current: {})",
+            invoice_id, invoice.status
+        ));
+    }
 
     Ok(())
 }

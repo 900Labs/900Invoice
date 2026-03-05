@@ -56,31 +56,58 @@ pub fn upsert(conn: &Connection, update: &UpdateBusinessProfile) -> Result<Busin
 
     // Build partial update
     if let Some(v) = &update.name {
-        conn.execute("UPDATE business_profiles SET name=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET name=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.address {
-        conn.execute("UPDATE business_profiles SET address=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET address=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.city {
-        conn.execute("UPDATE business_profiles SET city=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET city=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.country {
-        conn.execute("UPDATE business_profiles SET country=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET country=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.country_code {
-        conn.execute("UPDATE business_profiles SET country_code=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET country_code=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.phone {
-        conn.execute("UPDATE business_profiles SET phone=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET phone=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.email {
-        conn.execute("UPDATE business_profiles SET email=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET email=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.website {
-        conn.execute("UPDATE business_profiles SET website=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET website=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.tax_id {
-        conn.execute("UPDATE business_profiles SET tax_id=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET tax_id=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     // logo_path can be set to None
     conn.execute(
@@ -94,7 +121,10 @@ pub fn upsert(conn: &Connection, update: &UpdateBusinessProfile) -> Result<Busin
         conn.execute("UPDATE business_profiles SET default_payment_terms_days=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
     }
     if let Some(v) = &update.bank_name {
-        conn.execute("UPDATE business_profiles SET bank_name=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE business_profiles SET bank_name=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &update.bank_account_number {
         conn.execute("UPDATE business_profiles SET bank_account_number=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;

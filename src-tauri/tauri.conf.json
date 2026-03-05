@@ -9,7 +9,6 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
-    "title": "900Invoice",
     "windows": [
       {
         "title": "900Invoice",

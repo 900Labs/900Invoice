@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::models::exchange_rate::ExchangeRate;
 use rusqlite::{params, Connection, Result};
 

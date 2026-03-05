@@ -1,8 +1,9 @@
-/// Tax calculator for 900Invoice.
-///
-/// All monetary values are i64 minor units (e.g. 10000 = 100.00 USD/KES/etc.).
-/// Tax rates are i32 basis points (1600 = 16.00%).
-/// Rounding: half-up (0.5 always rounds toward positive infinity).
+#![allow(dead_code)]
+//! Tax calculator for 900Invoice.
+//!
+//! All monetary values are i64 minor units (e.g. 10000 = 100.00 USD/KES/etc.).
+//! Tax rates are i32 basis points (1600 = 16.00%).
+//! Rounding: half-up (0.5 always rounds toward positive infinity).
 
 use crate::models::line_item::LineItem;
 use crate::models::tax::TaxRate;
@@ -131,7 +132,11 @@ pub fn calculate_invoice_taxes(
         };
 
         let tax_amount = calculate_line_tax(line_base, line.tax_rate_bps, is_inclusive);
-        let key = (line.tax_name.clone(), line.tax_rate_bps, line.is_withholding);
+        let key = (
+            line.tax_name.clone(),
+            line.tax_rate_bps,
+            line.is_withholding,
+        );
         *tax_map.entry(key).or_insert(0) += tax_amount;
     }
 
@@ -214,14 +219,11 @@ pub fn calculate_invoice_taxes_from_models(
     let subtotal_minor: i64 = line_items.iter().map(|li| li.line_total_minor).sum();
 
     let mut tax_lines: Vec<TaxLineEntry> = Vec::new();
-    let mut total_tax_minor: i64 = 0;
-
     for rate in tax_rates {
         if !rate.is_active {
             continue;
         }
         let tax_amount = calculate_line_tax(subtotal_minor, rate.rate_bps, is_inclusive);
-        total_tax_minor += tax_amount;
         tax_lines.push(TaxLineEntry {
             tax_rate_id: Some(rate.id.clone()),
             tax_name: rate.display_name.clone(),
@@ -241,6 +243,7 @@ pub fn calculate_invoice_taxes_from_models(
         .filter(|t| t.is_withholding)
         .map(|t| t.tax_amount_minor)
         .sum();
+    let total_tax_minor = non_wht;
 
     let total_minor = if is_inclusive {
         subtotal_minor - wht
@@ -363,9 +366,24 @@ mod tests {
     fn test_ghana_triple_tax() {
         // Ghana: same goods, three tax lines
         let lines = vec![
-            LineTaxInput { line_total_minor: 10_000, tax_rate_bps: 1500, tax_name: "VAT".into(), is_withholding: false },
-            LineTaxInput { line_total_minor: 10_000, tax_rate_bps: 250, tax_name: "NHIL".into(), is_withholding: false },
-            LineTaxInput { line_total_minor: 10_000, tax_rate_bps: 250, tax_name: "GETFund".into(), is_withholding: false },
+            LineTaxInput {
+                line_total_minor: 10_000,
+                tax_rate_bps: 1500,
+                tax_name: "VAT".into(),
+                is_withholding: false,
+            },
+            LineTaxInput {
+                line_total_minor: 10_000,
+                tax_rate_bps: 250,
+                tax_name: "NHIL".into(),
+                is_withholding: false,
+            },
+            LineTaxInput {
+                line_total_minor: 10_000,
+                tax_rate_bps: 250,
+                tax_name: "GETFund".into(),
+                is_withholding: false,
+            },
         ];
         let s = calculate_invoice_taxes(&lines, 0, false);
         let vat = s.tax_lines.iter().find(|t| t.tax_name == "VAT").unwrap();
@@ -377,8 +395,18 @@ mod tests {
     #[test]
     fn test_withholding_deduction() {
         let lines = vec![
-            LineTaxInput { line_total_minor: 10_000, tax_rate_bps: 1600, tax_name: "VAT".into(), is_withholding: false },
-            LineTaxInput { line_total_minor: 10_000, tax_rate_bps: 500, tax_name: "WHT".into(), is_withholding: true },
+            LineTaxInput {
+                line_total_minor: 10_000,
+                tax_rate_bps: 1600,
+                tax_name: "VAT".into(),
+                is_withholding: false,
+            },
+            LineTaxInput {
+                line_total_minor: 10_000,
+                tax_rate_bps: 500,
+                tax_name: "WHT".into(),
+                is_withholding: true,
+            },
         ];
         let s = calculate_invoice_taxes(&lines, 0, false);
         assert_eq!(s.total_tax_minor, 1_600);

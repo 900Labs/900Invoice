@@ -21,25 +21,18 @@ fn row_to_client(row: &rusqlite::Row<'_>) -> Result<Client> {
     })
 }
 
-const SELECT_COLS: &str =
-    "id, name, email, phone, address, city, country, country_code,
+const SELECT_COLS: &str = "id, name, email, phone, address, city, country, country_code,
      tax_id, currency_code, payment_terms_days, notes, created_at, updated_at";
 
 pub fn list_all(conn: &Connection) -> Result<Vec<Client>> {
-    let sql = format!(
-        "SELECT {} FROM clients ORDER BY name ASC",
-        SELECT_COLS
-    );
+    let sql = format!("SELECT {} FROM clients ORDER BY name ASC", SELECT_COLS);
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map([], row_to_client)?;
     rows.collect()
 }
 
 pub fn get_by_id(conn: &Connection, id: &str) -> Result<Option<Client>> {
-    let sql = format!(
-        "SELECT {} FROM clients WHERE id=?1",
-        SELECT_COLS
-    );
+    let sql = format!("SELECT {} FROM clients WHERE id=?1", SELECT_COLS);
     let mut stmt = conn.prepare(&sql)?;
     let mut rows = stmt.query_map(params![id], row_to_client)?;
     rows.next().transpose()
@@ -72,37 +65,70 @@ pub fn insert(conn: &Connection, c: &CreateClient) -> Result<Client> {
 
 pub fn update(conn: &Connection, id: &str, u: &UpdateClient) -> Result<Client> {
     if let Some(v) = &u.name {
-        conn.execute("UPDATE clients SET name=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET name=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.email {
-        conn.execute("UPDATE clients SET email=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET email=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.phone {
-        conn.execute("UPDATE clients SET phone=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET phone=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.address {
-        conn.execute("UPDATE clients SET address=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET address=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.city {
-        conn.execute("UPDATE clients SET city=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET city=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.country {
-        conn.execute("UPDATE clients SET country=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET country=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.country_code {
-        conn.execute("UPDATE clients SET country_code=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET country_code=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.tax_id {
-        conn.execute("UPDATE clients SET tax_id=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET tax_id=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.currency_code {
-        conn.execute("UPDATE clients SET currency_code=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET currency_code=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.payment_terms_days {
-        conn.execute("UPDATE clients SET payment_terms_days=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET payment_terms_days=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.notes {
-        conn.execute("UPDATE clients SET notes=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE clients SET notes=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     super::changelog::insert_entry(conn, "clients", id, "UPDATE", "{}")?;
     get_by_id(conn, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)
