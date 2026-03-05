@@ -62,7 +62,7 @@ Xcode Command Line Tools provides the compiler, linker, and system libraries nee
 ### Development Build (with hot-reload)
 
 ```bash
-git clone https://github.com/900-labs/900invoice.git
+git clone https://github.com/900Labs/900Invoice.git
 cd 900invoice
 npm install
 cargo tauri dev
@@ -223,19 +223,19 @@ The update endpoint must return JSON describing the latest release. Host this fi
   "platforms": {
     "linux-x86_64": {
       "signature": "...",
-      "url": "https://github.com/900-labs/900invoice/releases/download/v1.0.1/900invoice_1.0.1_amd64.AppImage.tar.gz"
+      "url": "https://github.com/900Labs/900Invoice/releases/download/v1.0.1/900invoice_1.0.1_amd64.AppImage.tar.gz"
     },
     "darwin-aarch64": {
       "signature": "...",
-      "url": "https://github.com/900-labs/900invoice/releases/download/v1.0.1/900Invoice_1.0.1_aarch64.app.tar.gz"
+      "url": "https://github.com/900Labs/900Invoice/releases/download/v1.0.1/900Invoice_1.0.1_aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
       "signature": "...",
-      "url": "https://github.com/900-labs/900invoice/releases/download/v1.0.1/900Invoice_1.0.1_x64.app.tar.gz"
+      "url": "https://github.com/900Labs/900Invoice/releases/download/v1.0.1/900Invoice_1.0.1_x64.app.tar.gz"
     },
     "windows-x86_64": {
       "signature": "...",
-      "url": "https://github.com/900-labs/900invoice/releases/download/v1.0.1/900Invoice_1.0.1_x64_en-US.msi.zip"
+      "url": "https://github.com/900Labs/900Invoice/releases/download/v1.0.1/900Invoice_1.0.1_x64_en-US.msi.zip"
     }
   }
 }
@@ -302,7 +302,7 @@ cask "900invoice" do
   version "1.0.0"
   sha256 "..." # sha256 of the .dmg
 
-  url "https://github.com/900-labs/900invoice/releases/download/v#{version}/900Invoice_#{version}_x64.dmg"
+  url "https://github.com/900Labs/900Invoice/releases/download/v#{version}/900Invoice_#{version}_x64.dmg"
 
   name "900Invoice"
   desc "Enterprise-grade invoicing for developing economies"

@@ -1,8 +1,9 @@
-/// Exchange rate cache for 900Invoice.
-///
-/// Rates are stored in the `exchange_rates` SQLite table with a daily validity
-/// key. For offline-first use, default seed rates (approximate) are provided.
-/// All monetary conversions preserve i64 minor-unit precision.
+#![allow(dead_code)]
+//! Exchange rate cache for 900Invoice.
+//!
+//! Rates are stored in the `exchange_rates` SQLite table with a daily validity
+//! key. For offline-first use, default seed rates (approximate) are provided.
+//! All monetary conversions preserve i64 minor-unit precision.
 
 use rusqlite::Connection;
 
@@ -30,28 +31,28 @@ pub fn seed_default_rates(conn: &Connection) -> Result<(), String> {
 
     // Default rates from USD
     let defaults: &[(&str, &str, f64)] = &[
-        ("USD", "KES",  152.50),
+        ("USD", "KES", 152.50),
         ("USD", "NGN", 1550.00),
-        ("USD", "ZAR",   18.20),
-        ("USD", "INR",   83.50),
+        ("USD", "ZAR", 18.20),
+        ("USD", "INR", 83.50),
         ("USD", "TZS", 2680.00),
         ("USD", "UGX", 3780.00),
-        ("USD", "GHS",   15.80),
-        ("USD", "XOF",  610.00),
-        ("USD", "XAF",  610.00),
-        ("USD", "EUR",    0.92),
+        ("USD", "GHS", 15.80),
+        ("USD", "XOF", 610.00),
+        ("USD", "XAF", 610.00),
+        ("USD", "EUR", 0.92),
         // Trivial identity
-        ("USD", "USD",    1.00),
-        ("EUR", "USD",    1.087),
-        ("KES", "USD",    0.00656),
-        ("NGN", "USD",    0.000645),
-        ("ZAR", "USD",    0.0549),
-        ("INR", "USD",    0.01198),
-        ("TZS", "USD",    0.000373),
-        ("UGX", "USD",    0.000265),
-        ("GHS", "USD",    0.0633),
-        ("XOF", "USD",    0.00164),
-        ("XAF", "USD",    0.00164),
+        ("USD", "USD", 1.00),
+        ("EUR", "USD", 1.087),
+        ("KES", "USD", 0.00656),
+        ("NGN", "USD", 0.000645),
+        ("ZAR", "USD", 0.0549),
+        ("INR", "USD", 0.01198),
+        ("TZS", "USD", 0.000373),
+        ("UGX", "USD", 0.000265),
+        ("GHS", "USD", 0.0633),
+        ("XOF", "USD", 0.00164),
+        ("XAF", "USD", 0.00164),
     ];
 
     for (base, target, rate) in defaults {
@@ -75,11 +76,7 @@ pub fn seed_default_rates(conn: &Connection) -> Result<(), String> {
 /// Retrieve the most recent cached exchange rate between two currencies.
 ///
 /// Looks up by exact date first, then falls back to the most recent available.
-pub fn get_cached_rate(
-    conn: &Connection,
-    base: &str,
-    target: &str,
-) -> Result<Option<f64>, String> {
+pub fn get_cached_rate(conn: &Connection, base: &str, target: &str) -> Result<Option<f64>, String> {
     if base == target {
         return Ok(Some(1.0));
     }
@@ -113,7 +110,9 @@ pub fn get_cached_rate(
                 Err(e) => Err(format!("Failed to query inverse rate: {e}")),
             }
         }
-        Err(e) => Err(format!("Failed to query exchange rate {base}/{target}: {e}")),
+        Err(e) => Err(format!(
+            "Failed to query exchange rate {base}/{target}: {e}"
+        )),
     }
 }
 
@@ -152,8 +151,11 @@ pub fn convert_currency(
         return Ok(amount_minor);
     }
 
-    let rate = get_cached_rate(conn, from_currency, to_currency)?
-        .ok_or_else(|| format!("No cached rate found for {from_currency}/{to_currency}. Try seeding default rates."))?;
+    let rate = get_cached_rate(conn, from_currency, to_currency)?.ok_or_else(|| {
+        format!(
+            "No cached rate found for {from_currency}/{to_currency}. Try seeding default rates."
+        )
+    })?;
 
     // Convert: preserve precision by working in f64 temporarily, then round.
     // This is acceptable for display/conversion, not for primary accounting.
@@ -308,7 +310,9 @@ mod tests {
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         let rates = get_all_rates(&conn, &today).unwrap();
         assert!(!rates.is_empty());
-        assert!(rates.iter().any(|r| r.base_currency == "USD" && r.target_currency == "KES"));
+        assert!(rates
+            .iter()
+            .any(|r| r.base_currency == "USD" && r.target_currency == "KES"));
     }
 
     #[test]

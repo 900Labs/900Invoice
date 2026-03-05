@@ -40,8 +40,7 @@ pub fn update_product(
     update: UpdateProduct,
 ) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let updated =
-        db::queries::products::update(&conn, &id, &update).map_err(|e| e.to_string())?;
+    let updated = db::queries::products::update(&conn, &id, &update).map_err(|e| e.to_string())?;
     serde_json::to_value(updated).map_err(|e| e.to_string())
 }
 
@@ -52,10 +51,7 @@ pub fn delete_product(db: State<'_, DbConn>, id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn search_products(
-    db: State<'_, DbConn>,
-    query: String,
-) -> Result<serde_json::Value, String> {
+pub fn search_products(db: State<'_, DbConn>, query: String) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
     let results = db::queries::products::search(&conn, &query).map_err(|e| e.to_string())?;
     serde_json::to_value(results).map_err(|e| e.to_string())

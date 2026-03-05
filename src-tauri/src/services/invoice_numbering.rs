@@ -1,13 +1,14 @@
-/// Gap-free invoice numbering service for 900Invoice.
-///
-/// Format: `{PREFIX}{SEP}{YEAR}{SEP}{PADDED_NUMBER}` e.g. `INV-2026-0001`
-///
-/// The actual atomic counter increment is handled in the DB queries layer
-/// (`db::queries::sequences`) using BEGIN IMMEDIATE transactions.
-/// This service provides the public API and preview functionality.
+#![allow(dead_code)]
+//! Gap-free invoice numbering service for 900Invoice.
+//!
+//! Format: `{PREFIX}{SEP}{YEAR}{SEP}{PADDED_NUMBER}` e.g. `INV-2026-0001`
+//!
+//! The actual atomic counter increment is handled in the DB queries layer
+//! (`db::queries::sequences`) using BEGIN IMMEDIATE transactions.
+//! This service provides the public API and preview functionality.
 
-use rusqlite::Connection;
 use chrono::Datelike;
+use rusqlite::Connection;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -108,11 +109,10 @@ fn inner_generate(conn: &Connection, sequence_name: &str) -> Result<String, Stri
 
     match &result {
         Ok(_) => {
-            conn.execute_batch("COMMIT")
-                .map_err(|e| {
-                    let _ = conn.execute_batch("ROLLBACK");
-                    format!("Failed to commit sequence transaction: {e}")
-                })?;
+            conn.execute_batch("COMMIT").map_err(|e| {
+                let _ = conn.execute_batch("ROLLBACK");
+                format!("Failed to commit sequence transaction: {e}")
+            })?;
         }
         Err(_) => {
             let _ = conn.execute_batch("ROLLBACK");
@@ -126,8 +126,7 @@ fn try_generate_and_advance(conn: &Connection, sequence_name: &str) -> Result<St
     let seq = load_sequence(conn, sequence_name)?;
     let current_year = chrono::Local::now().year();
 
-    let year_changed = seq.year_reset
-        && seq.last_year.map(|y| y != current_year).unwrap_or(false);
+    let year_changed = seq.year_reset && seq.last_year.map(|y| y != current_year).unwrap_or(false);
 
     let new_number = if year_changed { 1i64 } else { seq.next_number };
 

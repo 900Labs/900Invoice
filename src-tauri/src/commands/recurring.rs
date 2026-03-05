@@ -2,6 +2,7 @@ use crate::db;
 use crate::models::invoice::CreateInvoice;
 use crate::models::line_item::CreateLineItem;
 use crate::models::recurring::{CreateRecurring, UpdateRecurring};
+use chrono::Datelike;
 use rusqlite::Connection;
 use std::sync::Mutex;
 use tauri::State;
@@ -32,8 +33,7 @@ pub fn update_recurring(
     update: UpdateRecurring,
 ) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let updated =
-        db::queries::recurring::update(&conn, &id, &update).map_err(|e| e.to_string())?;
+    let updated = db::queries::recurring::update(&conn, &id, &update).map_err(|e| e.to_string())?;
     serde_json::to_value(updated).map_err(|e| e.to_string())
 }
 
@@ -46,9 +46,7 @@ pub fn delete_recurring(db: State<'_, DbConn>, id: String) -> Result<(), String>
 /// Generate actual invoices for all recurring schedules that are due today.
 /// Returns the list of newly created invoices.
 #[tauri::command]
-pub fn generate_due_recurring(
-    db: State<'_, DbConn>,
-) -> Result<serde_json::Value, String> {
+pub fn generate_due_recurring(db: State<'_, DbConn>) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
 
@@ -57,12 +55,13 @@ pub fn generate_due_recurring(
 
     for recurring in &due {
         // Load the template invoice with its line items
-        let template = match db::queries::invoices::get_with_details(&conn, &recurring.template_invoice_id)
-            .map_err(|e| e.to_string())?
-        {
-            Some(t) => t,
-            None => continue,
-        };
+        let template =
+            match db::queries::invoices::get_with_details(&conn, &recurring.template_invoice_id)
+                .map_err(|e| e.to_string())?
+            {
+                Some(t) => t,
+                None => continue,
+            };
 
         // Compute due date based on frequency
         let due_date = compute_next_date(&today, &recurring.frequency);
@@ -81,7 +80,8 @@ pub fn generate_due_recurring(
             exchange_rate_to_usd: template.exchange_rate_to_usd,
             exchange_rate_date: template.exchange_rate_date.clone(),
         };
-        let invoice = db::queries::invoices::insert(&conn, &new_invoice).map_err(|e| e.to_string())?;
+        let invoice =
+            db::queries::invoices::insert(&conn, &new_invoice).map_err(|e| e.to_string())?;
 
         // Copy line items from template
         for li in &template.line_items {
@@ -125,10 +125,8 @@ fn compute_next_date(from: &str, frequency: &str) -> String {
             NaiveDate::from_ymd_opt(year, month, date.day())
                 .unwrap_or(date + chrono::Duration::days(91))
         }
-        "annually" => {
-            NaiveDate::from_ymd_opt(date.year() + 1, date.month(), date.day())
-                .unwrap_or(date + chrono::Duration::days(365))
-        }
+        "annually" => NaiveDate::from_ymd_opt(date.year() + 1, date.month(), date.day())
+            .unwrap_or(date + chrono::Duration::days(365)),
         // "monthly" and default
         _ => {
             let m = date.month0() + 1;

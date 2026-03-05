@@ -28,10 +28,16 @@ fn parse_csv_line(line: &str) -> Vec<String> {
 
 /// Escape a field for CSV output.
 fn csv_escape(s: &str) -> String {
-    if s.contains(',') || s.contains('"') || s.contains('\n') {
-        format!("\"{}\"", s.replace('"', "\"\""))
+    let sanitized = if matches!(s.chars().next(), Some('=' | '+' | '-' | '@' | '\t' | '\r')) {
+        format!("'{}", s)
     } else {
         s.to_string()
+    };
+
+    if sanitized.contains(',') || sanitized.contains('"') || sanitized.contains('\n') {
+        format!("\"{}\"", sanitized.replace('"', "\"\""))
+    } else {
+        sanitized
     }
 }
 
@@ -57,7 +63,7 @@ pub fn import_clients_csv(
         }
         let fields = parse_csv_line(line);
 
-        let name = fields.get(0).cloned().unwrap_or_default();
+        let name = fields.first().cloned().unwrap_or_default();
         if name.is_empty() {
             errors.push(format!("Row {}: missing name", i + 2));
             continue;
@@ -73,9 +79,7 @@ pub fn import_clients_csv(
             country_code: fields.get(6).cloned().filter(|s| !s.is_empty()),
             tax_id: None,
             currency_code: fields.get(7).cloned().filter(|s| !s.is_empty()),
-            payment_terms_days: fields
-                .get(8)
-                .and_then(|s| s.parse::<i32>().ok()),
+            payment_terms_days: fields.get(8).and_then(|s| s.parse::<i32>().ok()),
             notes: None,
         };
 
@@ -215,13 +219,25 @@ pub fn restore_database(
                   tax_id, currency_code, payment_terms_days, notes, created_at, updated_at)
                  VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
                 rusqlite::params![
-                    client.id, client.name, client.email, client.phone,
-                    client.address, client.city, client.country, client.country_code,
-                    client.tax_id, client.currency_code, client.payment_terms_days,
-                    client.notes, client.created_at, client.updated_at,
+                    client.id,
+                    client.name,
+                    client.email,
+                    client.phone,
+                    client.address,
+                    client.city,
+                    client.country,
+                    client.country_code,
+                    client.tax_id,
+                    client.currency_code,
+                    client.payment_terms_days,
+                    client.notes,
+                    client.created_at,
+                    client.updated_at,
                 ],
             );
-            if result.is_ok() { count += 1; }
+            if result.is_ok() {
+                count += 1;
+            }
         }
         restored_counts.insert("clients".to_string(), count);
     }
@@ -238,14 +254,21 @@ pub fn restore_database(
                   default_tax_rate_bps, unit, is_active, created_at, updated_at)
                  VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
                 rusqlite::params![
-                    product.id, product.name, product.description,
-                    product.default_price_minor, product.default_currency,
-                    product.default_tax_rate_bps, product.unit,
+                    product.id,
+                    product.name,
+                    product.description,
+                    product.default_price_minor,
+                    product.default_currency,
+                    product.default_tax_rate_bps,
+                    product.unit,
                     if product.is_active { 1i32 } else { 0i32 },
-                    product.created_at, product.updated_at,
+                    product.created_at,
+                    product.updated_at,
                 ],
             );
-            if result.is_ok() { count += 1; }
+            if result.is_ok() {
+                count += 1;
+            }
         }
         restored_counts.insert("products".to_string(), count);
     }

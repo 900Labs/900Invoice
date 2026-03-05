@@ -1,4 +1,4 @@
-use crate::commands::invoices::recalculate_invoice_totals;
+use crate::commands::invoices::{ensure_invoice_is_draft, recalculate_invoice_totals};
 use crate::db;
 use crate::models::line_item::{CreateLineItem, UpdateLineItem};
 use rusqlite::Connection;
@@ -14,8 +14,8 @@ pub fn add_line_item(
 ) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
     let invoice_id = line_item.invoice_id.clone();
-    let created =
-        db::queries::line_items::insert(&conn, &line_item).map_err(|e| e.to_string())?;
+    ensure_invoice_is_draft(&conn, &invoice_id)?;
+    let created = db::queries::line_items::insert(&conn, &line_item).map_err(|e| e.to_string())?;
     recalculate_invoice_totals(&conn, &invoice_id)?;
     serde_json::to_value(created).map_err(|e| e.to_string())
 }
@@ -27,6 +27,10 @@ pub fn update_line_item(
     update: UpdateLineItem,
 ) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
+    let item = db::queries::line_items::get_by_id(&conn, &id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Line item not found: {}", id))?;
+    ensure_invoice_is_draft(&conn, &item.invoice_id)?;
     let updated =
         db::queries::line_items::update(&conn, &id, &update).map_err(|e| e.to_string())?;
     recalculate_invoice_totals(&conn, &updated.invoice_id)?;
@@ -41,16 +45,20 @@ pub fn remove_line_item(db: State<'_, DbConn>, id: String) -> Result<(), String>
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("Line item not found: {}", id))?;
     let invoice_id = item.invoice_id.clone();
+    ensure_invoice_is_draft(&conn, &invoice_id)?;
     db::queries::line_items::delete(&conn, &id).map_err(|e| e.to_string())?;
     recalculate_invoice_totals(&conn, &invoice_id)?;
     Ok(())
 }
 
 #[tauri::command]
-pub fn reorder_line_items(
-    db: State<'_, DbConn>,
-    ordered_ids: Vec<String>,
-) -> Result<(), String> {
+pub fn reorder_line_items(db: State<'_, DbConn>, ordered_ids: Vec<String>) -> Result<(), String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
+    if let Some(first_id) = ordered_ids.first() {
+        let first_item = db::queries::line_items::get_by_id(&conn, first_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("Line item not found: {}", first_id))?;
+        ensure_invoice_is_draft(&conn, &first_item.invoice_id)?;
+    }
     db::queries::line_items::reorder(&conn, &ordered_ids).map_err(|e| e.to_string())
 }

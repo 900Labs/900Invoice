@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a documented pre-merge validation baseline at `docs/QUALITY_GATE.md`.
+- Added `src-tauri/icons/icon.png` required for Tauri metadata/build compatibility.
+- Added root and Rust lockfiles (`package-lock.json`, `src-tauri/Cargo.lock`) for reproducible installs.
+
+### Changed
+
+- Hardened business logo handling:
+  - Validates logo paths as files.
+  - Restricts extensions to known image formats.
+  - Enforces a 2MB size limit.
+  - Copies assets into app-managed storage before persisting path references.
+- Hardened PDF logo loading with canonicalization, extension allowlist, and size checks.
+- Added CSV formula-injection mitigation for exports by neutralizing spreadsheet-evaluable leading characters.
+- Enforced draft-only mutation rules for invoice and line-item edit/delete operations.
+- Added payment validation and lifecycle protections:
+  - Rejects non-positive payment amounts.
+  - Requires currency match between payment and invoice.
+  - Prevents payments on `draft` and `void` invoices.
+  - Reverts invoice status from `paid` when payment deletion causes outstanding balance.
+- Updated sprint/contributor process docs with quality-gate and parallel-agent safety guidance.
+- Updated repository links from `900-labs/900invoice` to `900Labs/900Invoice`.
+
+### Fixed
+
+- Removed invalid `app.title` key from `src-tauri/tauri.conf.json` to satisfy strict Tauri/Rust checks.
+
 ## [1.0.0] - 2026-03-05
 
 Initial public release of 900Invoice — enterprise-grade invoicing for developing economies.
@@ -110,5 +138,5 @@ Initial public release of 900Invoice — enterprise-grade invoicing for developi
 
 ---
 
-[Unreleased]: https://github.com/900-labs/900invoice/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/900-labs/900invoice/releases/tag/v1.0.0
+[Unreleased]: https://github.com/900Labs/900Invoice/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/900Labs/900Invoice/releases/tag/v1.0.0

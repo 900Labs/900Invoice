@@ -111,7 +111,7 @@ git clone https://github.com/YOUR_USERNAME/900invoice.git
 cd 900invoice
 
 # 2. Add the upstream remote
-git remote add upstream https://github.com/900-labs/900invoice.git
+git remote add upstream https://github.com/900Labs/900Invoice.git
 
 # 3. Install frontend dependencies
 npm install
@@ -127,13 +127,13 @@ The application will open in a native window. Changes to Svelte files reload ins
 
 ```bash
 # Run all Rust tests
-cargo test --manifest-path src-tauri/Cargo.toml
+CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml
 
 # Run a specific test module
-cargo test --manifest-path src-tauri/Cargo.toml -- tax::tests
+CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml -- tax::tests
 
 # Check for lint errors (must pass before submitting a PR)
-cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+CARGO_TARGET_DIR=/tmp/900invoice-target cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
 
 # Check formatting
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
@@ -141,6 +141,8 @@ cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 # Run Svelte type checking
 npm run check
 ```
+
+For complete pre-merge validation, run the standard gate in `docs/QUALITY_GATE.md`.
 
 ---
 
@@ -424,8 +426,11 @@ Before opening a PR, ensure your sprint includes:
 1. A sprint record in `docs/sprints/sprint-XXX-<slug>.md`
 2. Implementation and documentation updates in the same change set
 3. Validation evidence (commands + results) captured in the PR body
+4. Quality gate execution based on `docs/QUALITY_GATE.md`
 
 All sprint PRs must be merged with **Squash and merge**.
+
+When using automation agents, isolate each agent in a separate workspace and perform all final git operations from one integration checkout.
 
 ---
 
@@ -474,7 +479,7 @@ PRs that change behavior without documentation may be asked to revise before mer
 
 6. **Commit** using the format below.
 
-7. **Push** to your fork and open a Pull Request against `900-labs/900invoice:main`.
+7. **Push** to your fork and open a Pull Request against `900Labs/900Invoice:main`.
 
 8. **Fill out the PR template** completely. Incomplete PRs may be closed.
    - PR title must be descriptive and readable
@@ -539,8 +544,8 @@ All PRs require at least one maintainer approval before merging.
 
 ## Getting Help
 
-- **GitHub Discussions**: [github.com/900-labs/900invoice/discussions](https://github.com/900-labs/900invoice/discussions) — for questions, ideas, and general discussion
-- **GitHub Issues**: [github.com/900-labs/900invoice/issues](https://github.com/900-labs/900invoice/issues) — for confirmed bugs and feature requests
+- **GitHub Discussions**: [github.com/900Labs/900Invoice/discussions](https://github.com/900Labs/900Invoice/discussions) — for questions, ideas, and general discussion
+- **GitHub Issues**: [github.com/900Labs/900Invoice/issues](https://github.com/900Labs/900Invoice/issues) — for confirmed bugs and feature requests
 - **Email**: [opensource@900labs.com](mailto:opensource@900labs.com) — for sensitive matters not suitable for public discussion
 - **Website**: [900labs.com](https://www.900labs.com)
 

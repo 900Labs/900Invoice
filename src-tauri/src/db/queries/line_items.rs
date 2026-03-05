@@ -1,4 +1,4 @@
-use crate::models::line_item::{CreateLineItem, LineItem, UpdateLineItem, compute_line_total};
+use crate::models::line_item::{compute_line_total, CreateLineItem, LineItem, UpdateLineItem};
 use rusqlite::{params, Connection, Result};
 use uuid::Uuid;
 
@@ -18,8 +18,7 @@ fn row_to_line_item(row: &rusqlite::Row<'_>) -> Result<LineItem> {
     })
 }
 
-const SELECT_COLS: &str =
-    "id, invoice_id, product_id, description, quantity, unit_price_minor,
+const SELECT_COLS: &str = "id, invoice_id, product_id, description, quantity, unit_price_minor,
      tax_rate_bps, discount_bps, line_total_minor, sort_order, created_at";
 
 pub fn list_for_invoice(conn: &Connection, invoice_id: &str) -> Result<Vec<LineItem>> {
@@ -71,25 +70,46 @@ pub fn insert(conn: &Connection, c: &CreateLineItem) -> Result<LineItem> {
 
 pub fn update(conn: &Connection, id: &str, u: &UpdateLineItem) -> Result<LineItem> {
     if let Some(v) = &u.product_id {
-        conn.execute("UPDATE invoice_line_items SET product_id=?1 WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoice_line_items SET product_id=?1 WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.description {
-        conn.execute("UPDATE invoice_line_items SET description=?1 WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoice_line_items SET description=?1 WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.quantity {
-        conn.execute("UPDATE invoice_line_items SET quantity=?1 WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoice_line_items SET quantity=?1 WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.unit_price_minor {
-        conn.execute("UPDATE invoice_line_items SET unit_price_minor=?1 WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoice_line_items SET unit_price_minor=?1 WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.tax_rate_bps {
-        conn.execute("UPDATE invoice_line_items SET tax_rate_bps=?1 WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoice_line_items SET tax_rate_bps=?1 WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.discount_bps {
-        conn.execute("UPDATE invoice_line_items SET discount_bps=?1 WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoice_line_items SET discount_bps=?1 WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.sort_order {
-        conn.execute("UPDATE invoice_line_items SET sort_order=?1 WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoice_line_items SET sort_order=?1 WHERE id=?2",
+            params![v, id],
+        )?;
     }
 
     // Recompute line_total after any update

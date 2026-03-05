@@ -15,7 +15,7 @@
   <img alt="Tauri" src="https://img.shields.io/badge/Tauri-v2-orange.svg">
   <img alt="Rust" src="https://img.shields.io/badge/Rust-1.75+-orange.svg">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg">
-  <img alt="CI" src="https://github.com/900-labs/900invoice/actions/workflows/ci.yml/badge.svg">
+  <img alt="CI" src="https://github.com/900Labs/900Invoice/actions/workflows/ci.yml/badge.svg">
 </div>
 
 ---
@@ -104,7 +104,7 @@ On a 4-year-old laptop with 4 GB of RAM running three browser tabs, this differe
 
 ### Pre-built Binaries
 
-Download the latest release for your platform from the [releases page](https://github.com/900-labs/900invoice/releases/latest):
+Download the latest release for your platform from the [releases page](https://github.com/900Labs/900Invoice/releases/latest):
 
 - **Windows**: `900Invoice-1.0.0.msi` (installer) or `900Invoice-1.0.0.exe` (portable)
 - **macOS**: `900Invoice-1.0.0.dmg`
@@ -127,7 +127,7 @@ sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev librsvg2-dev
 **Build and run:**
 ```bash
 # Clone the repository
-git clone https://github.com/900-labs/900invoice.git
+git clone https://github.com/900Labs/900Invoice.git
 cd 900invoice
 
 # Install frontend dependencies
@@ -190,6 +190,7 @@ Your data never leaves your machine unless you explicitly export it.
 - [Internationalization Guide](docs/I18N.md) — add languages, RTL support
 - [Deployment Guide](docs/DEPLOYMENT.md) — build and distribute for all platforms
 - [Sprint Process](docs/SPRINT_PROCESS.md) — required sprint workflow and squash-merge policy
+- [Quality Gate](docs/QUALITY_GATE.md) — required pre-merge validation baseline
 - [Sprint Records](docs/sprints/) — delivered sprint scope, validation, and decision history
 
 ## Contributing
@@ -222,7 +223,7 @@ To report a vulnerability, email [security@900labs.com](mailto:security@900labs.
 |------|-------------|------------|
 | [900PDF](https://github.com/900-labs/900pdf) | PDF editor and toolkit | `900-labs/900pdf` |
 | [900CRM](https://github.com/900-labs/900crm) | Customer relationship management | `900-labs/900crm` |
-| **900Invoice** | Invoicing and billing | `900-labs/900invoice` ← you are here |
+| **900Invoice** | Invoicing and billing | `900Labs/900Invoice` ← you are here |
 
 All tools are built on the same Tauri v2 + Rust + Svelte 5 stack. They share conventions, libraries, and the same commitment: free forever, offline-first, open source.
 

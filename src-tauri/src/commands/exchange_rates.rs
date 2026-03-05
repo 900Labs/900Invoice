@@ -27,10 +27,15 @@ pub fn get_cached_rate(
     date: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let effective_date = date.unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
-    let rate =
-        db::queries::exchange_rates::get_rate(&conn, &base_currency, &target_currency, &effective_date)
-            .map_err(|e| e.to_string())?;
+    let effective_date =
+        date.unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
+    let rate = db::queries::exchange_rates::get_rate(
+        &conn,
+        &base_currency,
+        &target_currency,
+        &effective_date,
+    )
+    .map_err(|e| e.to_string())?;
     match rate {
         Some(r) => serde_json::to_value(r).map_err(|e| e.to_string()),
         None => Ok(serde_json::Value::Null),
@@ -59,7 +64,8 @@ pub fn convert_currency(
     }
 
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let effective_date = date.unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
+    let effective_date =
+        date.unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
 
     let rate_row =
         db::queries::exchange_rates::get_rate(&conn, &from_currency, &to_currency, &effective_date)

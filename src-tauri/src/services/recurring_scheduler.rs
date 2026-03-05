@@ -1,11 +1,12 @@
-/// Recurring invoice scheduler for 900Invoice.
-///
-/// Processes recurring invoice templates and generates new invoices when due.
-/// Handles: weekly, monthly, quarterly, annual frequencies.
-/// Recovers missed jobs gracefully (processes all overdue recurring invoices).
+#![allow(dead_code)]
+//! Recurring invoice scheduler for 900Invoice.
+//!
+//! Processes recurring invoice templates and generates new invoices when due.
+//! Handles: weekly, monthly, quarterly, annual frequencies.
+//! Recovers missed jobs gracefully (processes all overdue recurring invoices).
 
-use rusqlite::Connection;
 use chrono::{Datelike, Duration, NaiveDate};
+use rusqlite::Connection;
 use uuid::Uuid;
 
 // ---------------------------------------------------------------------------
@@ -48,10 +49,7 @@ pub fn get_due_recurring(conn: &Connection) -> Result<Vec<String>, String> {
 /// 4. If end_date is set and has passed, sets recurring status to 'completed'.
 ///
 /// Returns the new invoice UUID.
-pub fn generate_from_template(
-    conn: &Connection,
-    recurring_id: &str,
-) -> Result<String, String> {
+pub fn generate_from_template(conn: &Connection, recurring_id: &str) -> Result<String, String> {
     // Load recurring record
     let rec = load_recurring(conn, recurring_id)?;
 
@@ -62,8 +60,9 @@ pub fn generate_from_template(
     let payment_terms_days = load_client_payment_terms(conn, &template.client_id)?;
 
     // Generate invoice number
-    let new_invoice_number = crate::services::invoice_numbering::generate_invoice_number(conn, "default")
-        .unwrap_or_else(|_| format!("INV-{}", Uuid::new_v4().to_string()[..8].to_uppercase()));
+    let new_invoice_number =
+        crate::services::invoice_numbering::generate_invoice_number(conn, "default")
+            .unwrap_or_else(|_| format!("INV-{}", Uuid::new_v4().to_string()[..8].to_uppercase()));
 
     let today = today_iso();
     let due_date = add_days(&today, payment_terms_days);
@@ -161,7 +160,10 @@ pub fn generate_from_template(
         "invoices",
         &new_invoice_id,
         "INSERT",
-        &format!(r#"{{"source":"recurring","recurring_id":"{}"}}"#, recurring_id),
+        &format!(
+            r#"{{"source":"recurring","recurring_id":"{}"}}"#,
+            recurring_id
+        ),
     );
 
     Ok(new_invoice_id)
@@ -303,13 +305,15 @@ fn load_invoice(conn: &Connection, invoice_id: &str) -> Result<InvoiceTemplate, 
 }
 
 fn load_client_payment_terms(conn: &Connection, client_id: &str) -> Result<i64, String> {
-    conn.query_row(
+    match conn.query_row(
         "SELECT payment_terms_days FROM clients WHERE id = ?1",
         rusqlite::params![client_id],
         |row| row.get::<_, i64>(0),
-    )
-    .unwrap_or(Ok(30))
-    .map_err(|e| format!("Failed to load client payment terms: {e}"))
+    ) {
+        Ok(days) => Ok(days),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(30),
+        Err(e) => Err(format!("Failed to load client payment terms: {e}")),
+    }
 }
 
 fn load_line_items(conn: &Connection, invoice_id: &str) -> Result<Vec<LineItemTemplate>, String> {
@@ -365,7 +369,11 @@ fn days_in_month(year: i32, month: u32) -> u32 {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,
         2 => {
-            if is_leap_year(year) { 29 } else { 28 }
+            if is_leap_year(year) {
+                29
+            } else {
+                28
+            }
         }
         _ => 30,
     }

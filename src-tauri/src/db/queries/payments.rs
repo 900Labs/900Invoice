@@ -16,8 +16,7 @@ fn row_to_payment(row: &rusqlite::Row<'_>) -> Result<Payment> {
     })
 }
 
-const SELECT_COLS: &str =
-    "id, invoice_id, amount_minor, currency_code, payment_method,
+const SELECT_COLS: &str = "id, invoice_id, amount_minor, currency_code, payment_method,
      payment_reference, notes, paid_at, created_at";
 
 pub fn list_for_invoice(conn: &Connection, invoice_id: &str) -> Result<Vec<Payment>> {

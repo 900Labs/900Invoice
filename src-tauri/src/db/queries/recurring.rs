@@ -19,8 +19,7 @@ fn row_to_recurring(row: &rusqlite::Row<'_>) -> Result<RecurringInvoice> {
     })
 }
 
-const SELECT_COLS: &str =
-    "id, client_id, template_invoice_id, frequency, next_generation_date,
+const SELECT_COLS: &str = "id, client_id, template_invoice_id, frequency, next_generation_date,
      end_date, auto_send, last_generated, status, created_at, updated_at";
 
 pub fn list_all(conn: &Connection) -> Result<Vec<RecurringInvoice>> {
@@ -53,7 +52,11 @@ pub fn insert(conn: &Connection, c: &CreateRecurring) -> Result<RecurringInvoice
             c.frequency,
             c.next_generation_date,
             c.end_date,
-            if c.auto_send.unwrap_or(false) { 1i32 } else { 0i32 },
+            if c.auto_send.unwrap_or(false) {
+                1i32
+            } else {
+                0i32
+            },
         ],
     )?;
     super::changelog::insert_entry(conn, "recurring_invoices", &id, "INSERT", "{}")?;
@@ -62,20 +65,32 @@ pub fn insert(conn: &Connection, c: &CreateRecurring) -> Result<RecurringInvoice
 
 pub fn update(conn: &Connection, id: &str, u: &UpdateRecurring) -> Result<RecurringInvoice> {
     if let Some(v) = &u.frequency {
-        conn.execute("UPDATE recurring_invoices SET frequency=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE recurring_invoices SET frequency=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.next_generation_date {
         conn.execute("UPDATE recurring_invoices SET next_generation_date=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
     }
     if let Some(v) = &u.end_date {
-        conn.execute("UPDATE recurring_invoices SET end_date=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE recurring_invoices SET end_date=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.auto_send {
         let flag = if *v { 1i32 } else { 0i32 };
-        conn.execute("UPDATE recurring_invoices SET auto_send=?1, updated_at=datetime('now') WHERE id=?2", params![flag, id])?;
+        conn.execute(
+            "UPDATE recurring_invoices SET auto_send=?1, updated_at=datetime('now') WHERE id=?2",
+            params![flag, id],
+        )?;
     }
     if let Some(v) = &u.status {
-        conn.execute("UPDATE recurring_invoices SET status=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE recurring_invoices SET status=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     super::changelog::insert_entry(conn, "recurring_invoices", id, "UPDATE", "{}")?;
     get_by_id(conn, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)

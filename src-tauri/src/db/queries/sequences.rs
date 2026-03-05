@@ -1,5 +1,7 @@
-use rusqlite::{params, Connection, Result};
+#![allow(dead_code)]
+
 use chrono::Datelike;
+use rusqlite::{params, Connection, Result};
 
 /// Atomically fetch-and-increment the sequence counter.
 /// Returns the formatted invoice number, e.g. "INV-2026-0001".
@@ -42,7 +44,10 @@ pub fn get_next_number(conn: &Connection, sequence_name: &str) -> Result<String>
         // Build the formatted number
         let padded = format!("{:0>width$}", next_number, width = pad_digits as usize);
         let number = if include_year != 0 {
-            format!("{}{}{}{}{}", prefix, separator, current_year, separator, padded)
+            format!(
+                "{}{}{}{}{}",
+                prefix, separator, current_year, separator, padded
+            )
         } else {
             format!("{}{}{}", prefix, separator, padded)
         };

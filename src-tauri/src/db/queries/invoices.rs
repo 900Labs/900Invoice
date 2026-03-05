@@ -32,8 +32,7 @@ fn row_to_invoice(row: &rusqlite::Row<'_>) -> Result<Invoice> {
     })
 }
 
-const SELECT_COLS: &str =
-    "id, invoice_number, client_id, status, currency_code,
+const SELECT_COLS: &str = "id, invoice_number, client_id, status, currency_code,
      subtotal_minor, discount_minor, tax_amount_minor, total_minor, amount_paid_minor,
      exchange_rate_to_usd, exchange_rate_date, issue_date, due_date,
      uses_inclusive_taxes, notes, terms, footer,
@@ -112,7 +111,11 @@ pub fn insert(conn: &Connection, c: &CreateInvoice) -> Result<Invoice> {
             c.currency_code.as_deref().unwrap_or("USD"),
             c.issue_date.as_deref().unwrap_or(""),
             c.due_date,
-            if c.uses_inclusive_taxes.unwrap_or(false) { 1i32 } else { 0i32 },
+            if c.uses_inclusive_taxes.unwrap_or(false) {
+                1i32
+            } else {
+                0i32
+            },
             c.notes.as_deref().unwrap_or(""),
             c.terms.as_deref().unwrap_or(""),
             c.footer.as_deref().unwrap_or(""),
@@ -127,38 +130,71 @@ pub fn insert(conn: &Connection, c: &CreateInvoice) -> Result<Invoice> {
 
 pub fn update(conn: &Connection, id: &str, u: &UpdateInvoice) -> Result<Invoice> {
     if let Some(v) = &u.client_id {
-        conn.execute("UPDATE invoices SET client_id=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET client_id=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.currency_code {
-        conn.execute("UPDATE invoices SET currency_code=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET currency_code=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.issue_date {
-        conn.execute("UPDATE invoices SET issue_date=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET issue_date=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.due_date {
-        conn.execute("UPDATE invoices SET due_date=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET due_date=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.uses_inclusive_taxes {
         let flag = if *v { 1i32 } else { 0i32 };
-        conn.execute("UPDATE invoices SET uses_inclusive_taxes=?1, updated_at=datetime('now') WHERE id=?2", params![flag, id])?;
+        conn.execute(
+            "UPDATE invoices SET uses_inclusive_taxes=?1, updated_at=datetime('now') WHERE id=?2",
+            params![flag, id],
+        )?;
     }
     if let Some(v) = &u.notes {
-        conn.execute("UPDATE invoices SET notes=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET notes=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.terms {
-        conn.execute("UPDATE invoices SET terms=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET terms=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.footer {
-        conn.execute("UPDATE invoices SET footer=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET footer=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.discount_minor {
-        conn.execute("UPDATE invoices SET discount_minor=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET discount_minor=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.exchange_rate_to_usd {
-        conn.execute("UPDATE invoices SET exchange_rate_to_usd=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET exchange_rate_to_usd=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.exchange_rate_date {
-        conn.execute("UPDATE invoices SET exchange_rate_date=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE invoices SET exchange_rate_date=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     super::changelog::insert_entry(conn, "invoices", id, "UPDATE", "{}")?;
     get_by_id(conn, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)
@@ -170,7 +206,12 @@ pub fn delete(conn: &Connection, id: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn update_status(conn: &Connection, id: &str, status: &str, timestamp_col: Option<&str>) -> Result<()> {
+pub fn update_status(
+    conn: &Connection,
+    id: &str,
+    status: &str,
+    timestamp_col: Option<&str>,
+) -> Result<()> {
     conn.execute(
         "UPDATE invoices SET status=?1, updated_at=datetime('now') WHERE id=?2",
         params![status, id],
@@ -198,7 +239,13 @@ pub fn update_totals(
         "UPDATE invoices SET subtotal_minor=?1, discount_minor=?2, tax_amount_minor=?3,
                               total_minor=?4, updated_at=datetime('now')
          WHERE id=?5",
-        params![subtotal_minor, discount_minor, tax_amount_minor, total_minor, id],
+        params![
+            subtotal_minor,
+            discount_minor,
+            tax_amount_minor,
+            total_minor,
+            id
+        ],
     )?;
     Ok(())
 }
@@ -231,5 +278,3 @@ pub fn search(conn: &Connection, query: &str) -> Result<Vec<Invoice>> {
     let rows = stmt.query_map(params![pattern], row_to_invoice)?;
     rows.collect()
 }
-
-

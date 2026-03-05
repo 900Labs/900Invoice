@@ -1,9 +1,11 @@
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 
+use crate::models::client::Client;
 use crate::models::line_item::LineItem;
 use crate::models::payment::Payment;
 use crate::models::tax::InvoiceTax;
-use crate::models::client::Client;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]

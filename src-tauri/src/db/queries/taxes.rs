@@ -36,8 +36,7 @@ fn row_to_invoice_tax(row: &rusqlite::Row<'_>) -> Result<InvoiceTax> {
     })
 }
 
-const TAX_RATE_COLS: &str =
-    "id, name, display_name, rate_bps, country_code,
+const TAX_RATE_COLS: &str = "id, name, display_name, rate_bps, country_code,
      is_default, is_withholding, is_inclusive, is_active, created_at, updated_at";
 
 pub fn list_all(conn: &Connection) -> Result<Vec<TaxRate>> {
@@ -79,9 +78,21 @@ pub fn insert(conn: &Connection, c: &CreateTaxRate) -> Result<TaxRate> {
             c.display_name,
             c.rate_bps,
             c.country_code,
-            if c.is_default.unwrap_or(false) { 1i32 } else { 0i32 },
-            if c.is_withholding.unwrap_or(false) { 1i32 } else { 0i32 },
-            if c.is_inclusive.unwrap_or(false) { 1i32 } else { 0i32 },
+            if c.is_default.unwrap_or(false) {
+                1i32
+            } else {
+                0i32
+            },
+            if c.is_withholding.unwrap_or(false) {
+                1i32
+            } else {
+                0i32
+            },
+            if c.is_inclusive.unwrap_or(false) {
+                1i32
+            } else {
+                0i32
+            },
         ],
     )?;
     super::changelog::insert_entry(conn, "tax_rates", &id, "INSERT", "{}")?;
@@ -90,32 +101,56 @@ pub fn insert(conn: &Connection, c: &CreateTaxRate) -> Result<TaxRate> {
 
 pub fn update(conn: &Connection, id: &str, u: &UpdateTaxRate) -> Result<TaxRate> {
     if let Some(v) = &u.name {
-        conn.execute("UPDATE tax_rates SET name=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE tax_rates SET name=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.display_name {
-        conn.execute("UPDATE tax_rates SET display_name=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE tax_rates SET display_name=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.rate_bps {
-        conn.execute("UPDATE tax_rates SET rate_bps=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE tax_rates SET rate_bps=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.country_code {
-        conn.execute("UPDATE tax_rates SET country_code=?1, updated_at=datetime('now') WHERE id=?2", params![v, id])?;
+        conn.execute(
+            "UPDATE tax_rates SET country_code=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
     }
     if let Some(v) = &u.is_default {
         let flag = if *v { 1i32 } else { 0i32 };
-        conn.execute("UPDATE tax_rates SET is_default=?1, updated_at=datetime('now') WHERE id=?2", params![flag, id])?;
+        conn.execute(
+            "UPDATE tax_rates SET is_default=?1, updated_at=datetime('now') WHERE id=?2",
+            params![flag, id],
+        )?;
     }
     if let Some(v) = &u.is_withholding {
         let flag = if *v { 1i32 } else { 0i32 };
-        conn.execute("UPDATE tax_rates SET is_withholding=?1, updated_at=datetime('now') WHERE id=?2", params![flag, id])?;
+        conn.execute(
+            "UPDATE tax_rates SET is_withholding=?1, updated_at=datetime('now') WHERE id=?2",
+            params![flag, id],
+        )?;
     }
     if let Some(v) = &u.is_inclusive {
         let flag = if *v { 1i32 } else { 0i32 };
-        conn.execute("UPDATE tax_rates SET is_inclusive=?1, updated_at=datetime('now') WHERE id=?2", params![flag, id])?;
+        conn.execute(
+            "UPDATE tax_rates SET is_inclusive=?1, updated_at=datetime('now') WHERE id=?2",
+            params![flag, id],
+        )?;
     }
     if let Some(v) = &u.is_active {
         let flag = if *v { 1i32 } else { 0i32 };
-        conn.execute("UPDATE tax_rates SET is_active=?1, updated_at=datetime('now') WHERE id=?2", params![flag, id])?;
+        conn.execute(
+            "UPDATE tax_rates SET is_active=?1, updated_at=datetime('now') WHERE id=?2",
+            params![flag, id],
+        )?;
     }
     super::changelog::insert_entry(conn, "tax_rates", id, "UPDATE", "{}")?;
     get_by_id(conn, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)
@@ -161,10 +196,15 @@ pub fn insert_invoice_tax(conn: &Connection, c: &CreateInvoiceTax) -> Result<Inv
          FROM invoice_taxes WHERE id=?1",
     )?;
     let mut rows = stmt.query_map(params![id], row_to_invoice_tax)?;
-    rows.next().transpose()?.ok_or(rusqlite::Error::QueryReturnedNoRows)
+    rows.next()
+        .transpose()?
+        .ok_or(rusqlite::Error::QueryReturnedNoRows)
 }
 
 pub fn delete_for_invoice(conn: &Connection, invoice_id: &str) -> Result<()> {
-    conn.execute("DELETE FROM invoice_taxes WHERE invoice_id=?1", params![invoice_id])?;
+    conn.execute(
+        "DELETE FROM invoice_taxes WHERE invoice_id=?1",
+        params![invoice_id],
+    )?;
     Ok(())
 }

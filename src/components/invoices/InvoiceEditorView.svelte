@@ -47,7 +47,7 @@
   let issueDate = $state(today());
   let paymentTermsDays = $state(30);
   let dueDate = $state(addDays(today(), 30));
-  let currencyCode = $state(settings.defaultCurrency || 'USD');
+  let currencyCode = $state('USD');
   let taxMode = $state<'Exclusive' | 'Inclusive'>('Exclusive');
   let notes = $state('');
   let terms = $state('');
@@ -282,6 +282,10 @@
 
   // ─── Load existing invoice if editing ─────────────────
   onMount(async () => {
+    if (settings.defaultCurrency) {
+      currencyCode = settings.defaultCurrency;
+    }
+
     await Promise.all([
       loadClients(),
       loadProducts(),
@@ -624,10 +628,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
-  }
-
-  .editor-sidebar {
-    /* sticky handled on child card */
   }
 
   /* Client selector */
