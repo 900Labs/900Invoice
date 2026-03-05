@@ -874,6 +874,16 @@ pub fn get_preview_data(invoice: &InvoiceWithDetails, business: &BusinessProfile
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_file_path(suffix: &str) -> std::path::PathBuf {
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time before unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("900invoice_pdf_engine_test_{}_{}", ts, suffix))
+    }
 
     #[test]
     fn test_format_currency_kes() {
@@ -918,5 +928,35 @@ mod tests {
     #[test]
     fn test_html_escape() {
         assert_eq!(html_escape("AT&T <Inc>"), "AT&amp;T &lt;Inc&gt;");
+    }
+
+    #[test]
+    fn test_load_logo_base64_rejects_unsupported_extension() {
+        let path = temp_file_path("bad.txt");
+        fs::write(&path, b"not-an-image").expect("write test file");
+        let got = load_logo_base64(path.to_str().expect("utf-8 path"));
+        assert!(got.is_none());
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn test_load_logo_base64_rejects_oversized_file() {
+        let path = temp_file_path("large.png");
+        let oversized = vec![0u8; 2 * 1024 * 1024 + 1];
+        fs::write(&path, oversized).expect("write oversized test file");
+        let got = load_logo_base64(path.to_str().expect("utf-8 path"));
+        assert!(got.is_none());
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn test_load_logo_base64_accepts_allowed_extension_and_size() {
+        let path = temp_file_path("ok.png");
+        fs::write(&path, b"\x89PNG\r\n\x1a\n").expect("write png header");
+        let got = load_logo_base64(path.to_str().expect("utf-8 path"));
+        assert!(got.is_some());
+        let uri = got.expect("data uri");
+        assert!(uri.starts_with("data:image/png;base64,"));
+        let _ = fs::remove_file(path);
     }
 }

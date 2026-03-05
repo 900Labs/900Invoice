@@ -278,3 +278,37 @@ pub fn restore_database(
         "restored": restored_counts,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{csv_escape, parse_csv_line};
+
+    #[test]
+    fn csv_escape_prefixes_formula_like_values() {
+        assert_eq!(csv_escape("=2+2"), "'=2+2");
+        assert_eq!(csv_escape("+cmd"), "'+cmd");
+        assert_eq!(csv_escape("-sum"), "'-sum");
+        assert_eq!(csv_escape("@risk"), "'@risk");
+        assert_eq!(csv_escape("\tformula"), "'\tformula");
+        assert_eq!(csv_escape("\rformula"), "'\rformula");
+    }
+
+    #[test]
+    fn csv_escape_quotes_when_needed_after_sanitization() {
+        assert_eq!(csv_escape("=SUM(A1,B1)"), "\"'=SUM(A1,B1)\"");
+        assert_eq!(csv_escape("hello,world"), "\"hello,world\"");
+        assert_eq!(csv_escape("say \"hello\""), "\"say \"\"hello\"\"\"");
+    }
+
+    #[test]
+    fn csv_escape_leaves_safe_values_unchanged() {
+        assert_eq!(csv_escape("normal-value"), "normal-value");
+        assert_eq!(csv_escape("12345"), "12345");
+    }
+
+    #[test]
+    fn parse_csv_line_handles_basic_quoted_commas() {
+        let fields = parse_csv_line("name,\"addr, line\",city");
+        assert_eq!(fields, vec!["name", "addr, line", "city"]);
+    }
+}
