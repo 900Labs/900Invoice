@@ -3,6 +3,12 @@ set -euo pipefail
 
 REPO="${1:-900Labs/900Invoice}"
 BRANCH="${2:-main}"
+REQUIRED_APPROVING_REVIEW_COUNT="${REQUIRED_APPROVING_REVIEW_COUNT:-0}"
+
+if [[ ! "$REQUIRED_APPROVING_REVIEW_COUNT" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: REQUIRED_APPROVING_REVIEW_COUNT must be a non-negative integer." >&2
+  exit 1
+fi
 
 echo "Applying repository merge policy for ${REPO}..."
 gh api -X PATCH "repos/${REPO}" \
@@ -14,7 +20,7 @@ echo "Merge policy applied: squash-only + auto-delete merged branches."
 
 echo "Applying branch protection for ${REPO}:${BRANCH}..."
 set +e
-payload="$(jq -n '{
+payload="$(jq -n --argjson review_count "$REQUIRED_APPROVING_REVIEW_COUNT" '{
   required_status_checks: {
     strict: true,
     contexts: ["Quality Gate"]
@@ -23,7 +29,7 @@ payload="$(jq -n '{
   required_pull_request_reviews: {
     dismiss_stale_reviews: true,
     require_code_owner_reviews: false,
-    required_approving_review_count: 1
+    required_approving_review_count: $review_count
   },
   restrictions: null,
   required_conversation_resolution: true,
@@ -45,7 +51,7 @@ if [[ $status -eq 0 ]]; then
   exit 0
 fi
 
-if echo "$resp" | rg -q "Upgrade to GitHub Pro or make this repository public"; then
+if echo "$resp" | grep -q "Upgrade to GitHub Pro or make this repository public"; then
   cat <<EOF
 NOTICE: Branch protection could not be enabled yet.
 Reason: GitHub returned a plan/visibility restriction for private repositories.

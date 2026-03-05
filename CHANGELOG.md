@@ -45,10 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enforced squash-only merge settings and auto-delete-on-merge at repository level.
 - Activated `main` branch protection and strict governance verification.
 - Added strict repository-policy verification step to release workflow.
+- Made branch-protection approval requirements configurable in policy scripts with `REQUIRED_APPROVING_REVIEW_COUNT` and set default governance baseline to `0` required approvals for autonomous maintainer operation.
 
 ### Fixed
 
 - Removed invalid `app.title` key from `src-tauri/tauri.conf.json` to satisfy strict Tauri/Rust checks.
+- Removed `rg` dependency from repository-policy scripts to improve compatibility on minimal CI runners.
 
 ## [1.0.0] - 2026-03-05
 
