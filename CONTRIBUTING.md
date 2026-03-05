@@ -17,6 +17,8 @@ We welcome contributors from all backgrounds and experience levels. If this is y
 - [How to Add a New Language](#how-to-add-a-new-language)
 - [How to Add a New Tax Rate](#how-to-add-a-new-tax-rate)
 - [How to Add a New Currency](#how-to-add-a-new-currency)
+- [Sprint Process](#sprint-process)
+- [Documentation Requirements](#documentation-requirements)
 - [Pull Request Process](#pull-request-process)
 - [Commit Message Format](#commit-message-format)
 - [Code Review](#code-review)
@@ -411,6 +413,43 @@ Also update:
 
 ---
 
+## Sprint Process
+
+All contributions in this repository follow the sprint workflow defined in:
+
+- `docs/SPRINT_PROCESS.md`
+
+Before opening a PR, ensure your sprint includes:
+
+1. A sprint record in `docs/sprints/sprint-XXX-<slug>.md`
+2. Implementation and documentation updates in the same change set
+3. Validation evidence (commands + results) captured in the PR body
+
+All sprint PRs must be merged with **Squash and merge**.
+
+---
+
+## Documentation Requirements
+
+900Invoice is a global open-source project. Contributors must be able to understand changes without private context.
+
+When your change touches behavior, data model, APIs, workflows, or contributor expectations, update docs in the same PR. At minimum:
+
+1. Update one or more of:
+   - `README.md`
+   - `docs/API.md`
+   - `docs/ARCHITECTURE.md`
+   - `docs/DEPLOYMENT.md`
+   - `docs/I18N.md`
+   - `docs/TEMPLATES.md`
+   - ADRs in `docs/adr/` for architectural decisions
+2. Add or update the sprint record in `docs/sprints/`
+3. Describe doc impact explicitly in the PR body
+
+PRs that change behavior without documentation may be asked to revise before merge.
+
+---
+
 ## Pull Request Process
 
 1. **Fork** the repository on GitHub and clone your fork.
@@ -438,8 +477,12 @@ Also update:
 7. **Push** to your fork and open a Pull Request against `900-labs/900invoice:main`.
 
 8. **Fill out the PR template** completely. Incomplete PRs may be closed.
+   - PR title must be descriptive and readable
+   - PR body must include summary, scope, validation, risk, and documentation impact
 
 9. **Address review feedback.** Maintainers will review within 5 business days.
+
+10. **Merge via squash merge** and share the merged PR URL in your sprint handoff.
 
 ---
 

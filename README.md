@@ -189,12 +189,14 @@ Your data never leaves your machine unless you explicitly export it.
 - [Template Customization](docs/TEMPLATES.md) — customize your invoice PDF design
 - [Internationalization Guide](docs/I18N.md) — add languages, RTL support
 - [Deployment Guide](docs/DEPLOYMENT.md) — build and distribute for all platforms
+- [Sprint Process](docs/SPRINT_PROCESS.md) — required sprint workflow and squash-merge policy
+- [Sprint Records](docs/sprints/) — delivered sprint scope, validation, and decision history
 
 ## Contributing
 
 We welcome contributions from developers worldwide — especially those in the regions 900Invoice serves. Every line of code from a developer in Lagos, Nairobi, Accra, or Mumbai makes this tool better for the people it's built for.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding standards, and the PR process.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding standards, sprint rules, and the PR process.
 
 **Quick contribution ideas:**
 - Add your country's tax rates to `src-tauri/src/services/tax.rs`
