@@ -126,6 +126,9 @@ The application will open in a native window. Changes to Svelte files reload ins
 ### Running Tests
 
 ```bash
+# Verify API docs command catalog parity
+./scripts/verify-api-doc-commands.sh
+
 # Run all Rust tests
 CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml
 

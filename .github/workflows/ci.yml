@@ -22,6 +22,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify API docs parity
+        run: ./scripts/verify-api-doc-commands.sh
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
