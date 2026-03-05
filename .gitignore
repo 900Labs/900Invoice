@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Node/Svelte
+node_modules/
+dist/
+.svelte-kit/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Tauri/Rust build artifacts
+src-tauri/target/
+
+# Environment files
+.env
+.env.*
+!.env.example

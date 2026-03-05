@@ -1,0 +1,31 @@
+{
+  "productName": "900Invoice",
+  "version": "1.0.0",
+  "identifier": "com.900labs.invoice",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "title": "900Invoice",
+    "windows": [
+      {
+        "title": "900Invoice",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "shell": { "open": true },
+    "notification": { "all": true }
+  }
+}
