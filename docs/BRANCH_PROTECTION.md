@@ -2,7 +2,7 @@
 
 This document defines repository-level protection rules for `main`.
 
-Current status (2026-03-05):
+Current status (2026-03-06):
 
 1. Repository merge policy is enforced.
 2. Branch protection on `main` is active.
@@ -36,6 +36,41 @@ Required when GitHub plan/visibility allows branch protection:
 
 ---
 
+## Governance Profiles
+
+Policy scripts support profile-based defaults through `GOVERNANCE_PROFILE`:
+
+1. `solo`
+   - `REQUIRED_APPROVING_REVIEW_COUNT=0`
+   - `REQUIRE_CODE_OWNER_REVIEWS=false`
+   - `REQUIRE_LAST_PUSH_APPROVAL=false`
+2. `small-team`
+   - `REQUIRED_APPROVING_REVIEW_COUNT=1`
+   - `REQUIRE_CODE_OWNER_REVIEWS=false`
+   - `REQUIRE_LAST_PUSH_APPROVAL=true`
+3. `enterprise`
+   - `REQUIRED_APPROVING_REVIEW_COUNT=2`
+   - `REQUIRE_CODE_OWNER_REVIEWS=true`
+   - `REQUIRE_LAST_PUSH_APPROVAL=true`
+
+You can override any profile default by setting explicit env vars.
+
+Variables supported by policy scripts:
+
+1. `GOVERNANCE_PROFILE` (`solo`, `small-team`, `enterprise`)
+2. `REQUIRED_APPROVING_REVIEW_COUNT` (non-negative integer)
+3. `REQUIRE_CODE_OWNER_REVIEWS` (`true` or `false`)
+4. `REQUIRE_LAST_PUSH_APPROVAL` (`true` or `false`)
+
+The same variable contract is used by:
+
+1. `scripts/apply-repo-policy.sh`
+2. `scripts/verify-repo-policy.sh`
+3. `.github/workflows/governance-audit.yml`
+4. `.github/workflows/release.yml`
+
+---
+
 ## Apply Policy
 
 ```bash
@@ -45,13 +80,17 @@ Required when GitHub plan/visibility allows branch protection:
 Notes:
 
 1. The script always applies repository merge settings.
-2. Default policy is optimized for autonomous maintainer workflows and uses `REQUIRED_APPROVING_REVIEW_COUNT=0`.
-3. To require approvals, set an override before applying policy:
+2. Default profile is `solo`, optimized for autonomous maintainer workflows.
+3. To apply a profile explicitly:
    ```bash
-   REQUIRED_APPROVING_REVIEW_COUNT=1 ./scripts/apply-repo-policy.sh 900Labs/900Invoice main
+   GOVERNANCE_PROFILE=small-team ./scripts/apply-repo-policy.sh 900Labs/900Invoice main
    ```
-4. If branch protection is unavailable (for example private-repo plan restriction), the script prints a notice and exits successfully.
-5. Re-run the script after making the repository public to enable branch protection.
+4. To override profile defaults before applying policy:
+   ```bash
+   GOVERNANCE_PROFILE=enterprise REQUIRED_APPROVING_REVIEW_COUNT=1 ./scripts/apply-repo-policy.sh 900Labs/900Invoice main
+   ```
+5. If branch protection is unavailable (for example private-repo plan restriction), the script prints a notice and exits successfully.
+6. Re-run the script after making the repository public to enable branch protection.
 
 ---
 
@@ -69,10 +108,16 @@ STRICT=1 ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
 
 `STRICT=1` is the default. Set `STRICT=0` only for temporary diagnostics.
 
-To verify a non-default approval requirement, pass the same override:
+To verify a specific profile:
 
 ```bash
-REQUIRED_APPROVING_REVIEW_COUNT=1 ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+GOVERNANCE_PROFILE=enterprise ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+```
+
+To verify with explicit overrides:
+
+```bash
+GOVERNANCE_PROFILE=enterprise REQUIRED_APPROVING_REVIEW_COUNT=1 REQUIRE_CODE_OWNER_REVIEWS=false REQUIRE_LAST_PUSH_APPROVAL=true ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
 ```
 
 ---

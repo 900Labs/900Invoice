@@ -4,16 +4,17 @@ set -euo pipefail
 REPO="${1:-900Labs/900Invoice}"
 BRANCH="${2:-main}"
 STRICT="${STRICT:-1}"
-REQUIRED_APPROVING_REVIEW_COUNT="${REQUIRED_APPROVING_REVIEW_COUNT:-0}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/governance-profile-env.sh"
 
-if [[ ! "$REQUIRED_APPROVING_REVIEW_COUNT" =~ ^[0-9]+$ ]]; then
-  echo "FAIL: REQUIRED_APPROVING_REVIEW_COUNT must be a non-negative integer."
+if ! governance_profile_resolve; then
   exit 1
 fi
 
 fail=0
 
 echo "Verifying repository merge policy for ${REPO}..."
+echo "Resolved governance profile: ${GOVERNANCE_PROFILE} (reviews=${REQUIRED_APPROVING_REVIEW_COUNT}, code_owner=${REQUIRE_CODE_OWNER_REVIEWS}, last_push_approval=${REQUIRE_LAST_PUSH_APPROVAL})"
 repo_json="$(gh api "repos/${REPO}")"
 
 allow_squash="$(echo "$repo_json" | jq -r '.allow_squash_merge')"
@@ -49,6 +50,8 @@ else
   strict_checks="$(echo "$protection_json" | jq -r '.required_status_checks.strict')"
   contexts="$(echo "$protection_json" | jq -r '.required_status_checks.contexts[]?')"
   reviews="$(echo "$protection_json" | jq -r '.required_pull_request_reviews.required_approving_review_count')"
+  code_owner_reviews="$(echo "$protection_json" | jq -r '.required_pull_request_reviews.require_code_owner_reviews')"
+  last_push_approval="$(echo "$protection_json" | jq -r '.required_pull_request_reviews.require_last_push_approval')"
   conv="$(echo "$protection_json" | jq -r '.required_conversation_resolution.enabled')"
   linear="$(echo "$protection_json" | jq -r '.required_linear_history.enabled')"
 
@@ -57,6 +60,14 @@ else
   echo "$contexts" | grep -Fxq "Quality Gate" || { echo "FAIL: required checks must include 'Quality Gate'"; fail=1; }
   [[ "$reviews" -eq "$REQUIRED_APPROVING_REVIEW_COUNT" ]] || {
     echo "FAIL: required approving reviews must be ${REQUIRED_APPROVING_REVIEW_COUNT}"
+    fail=1
+  }
+  [[ "$code_owner_reviews" == "$REQUIRE_CODE_OWNER_REVIEWS" ]] || {
+    echo "FAIL: require_code_owner_reviews must be ${REQUIRE_CODE_OWNER_REVIEWS}"
+    fail=1
+  }
+  [[ "$last_push_approval" == "$REQUIRE_LAST_PUSH_APPROVAL" ]] || {
+    echo "FAIL: require_last_push_approval must be ${REQUIRE_LAST_PUSH_APPROVAL}"
     fail=1
   }
   [[ "$conv" == "true" ]] || { echo "FAIL: required conversation resolution must be enabled"; fail=1; }

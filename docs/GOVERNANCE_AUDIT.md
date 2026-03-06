@@ -28,17 +28,25 @@ Recommended:
 
 1. Configure `GH_ADMIN_TOKEN` as a fine-grained PAT with repository administration read access to avoid permission drift across GitHub settings changes.
 2. Keep branch-protection configuration codified through `scripts/apply-repo-policy.sh`.
+3. Configure repository variables for automation defaults when not using `solo` profile:
+   - `GOVERNANCE_PROFILE`
+   - `REQUIRED_APPROVING_REVIEW_COUNT` (optional)
+   - `REQUIRE_CODE_OWNER_REVIEWS` (optional)
+   - `REQUIRE_LAST_PUSH_APPROVAL` (optional)
 
 ## Manual Run
 
 Use `workflow_dispatch` and optionally set:
 
-- `required_approving_review_count` (default `0`)
+- `governance_profile` (`solo`, `small-team`, `enterprise`; default `solo`)
+- `required_approving_review_count` (optional override; default empty)
 
 Example expected review policy:
 
-- `0` for autonomous maintainer mode.
-- `1` or higher for team-reviewed mode.
+- `solo`: `0` reviews, no code-owner requirement, no last-push approval requirement.
+- `small-team`: `1` review, last-push approval required.
+- `enterprise`: `2` reviews, code-owner + last-push approval required.
+- Optional override can force a custom review count for audits.
 
 ## Failure Response
 
@@ -62,7 +70,7 @@ The workflow automatically routes failures to GitHub Issues:
 3. If an incident issue already exists, it appends a comment with:
    - workflow run URL
    - check outcomes
-   - expected review-count setting
+   - expected governance profile + review override input
    - remediation checklist
 
 This keeps governance failures visible even when maintainers are not actively monitoring Actions runs.

@@ -28,6 +28,7 @@ Before creating a release tag:
 2. Verify repository policy:
    - `./scripts/verify-repo-policy.sh 900Labs/900Invoice main`
    - (`STRICT=1` is default and required for releases)
+   - If using non-`solo` governance, set matching profile env vars (for example `GOVERNANCE_PROFILE=small-team`).
 3. Run local quality gate:
    - `./scripts/verify-api-doc-commands.sh`
    - `npm install`
@@ -70,6 +71,13 @@ Optional input:
 1. `tag` (for artifact naming, for example `v1.0.1`)
 
 Use this for dry-runs before pushing a real version tag.
+
+Release workflow governance verification defaults to `solo` unless repository variables are configured:
+
+1. `GOVERNANCE_PROFILE`
+2. `REQUIRED_APPROVING_REVIEW_COUNT` (optional override)
+3. `REQUIRE_CODE_OWNER_REVIEWS` (optional override)
+4. `REQUIRE_LAST_PUSH_APPROVAL` (optional override)
 
 ---
 
