@@ -90,12 +90,17 @@ write_report_list() {
   local label="$1"
   shift
   write_report_line "${label}:"
-  if [[ "$#" -eq 0 ]]; then
+  local filtered=()
+  local item
+  for item in "$@"; do
+    [[ -z "$item" ]] && continue
+    filtered+=("$item")
+  done
+  if [[ "${#filtered[@]}" -eq 0 ]]; then
     write_report_line "  - (none)"
     return 0
   fi
-  local item
-  for item in "$@"; do
+  for item in "${filtered[@]}"; do
     write_report_line "  - ${item}"
   done
 }
@@ -125,7 +130,7 @@ while IFS= read -r changed_file; do
   [[ -z "$changed_file" ]] && continue
   changed_list+=("$changed_file")
 done <<< "$changed_files"
-write_report_list "changed_files" "${changed_list[@]}"
+write_report_list "changed_files" "${changed_list[@]-}"
 
 is_governance_file() {
   local path="$1"
@@ -152,7 +157,7 @@ while IFS= read -r file; do
   fi
 done <<< "$changed_files"
 
-write_report_list "governance_changed_files" "${governance_files[@]}"
+write_report_list "governance_changed_files" "${governance_files[@]-}"
 
 if [[ "${#governance_files[@]}" -eq 0 ]]; then
   RESULT="pass"
@@ -171,14 +176,14 @@ done < <(echo "$changed_files" | awk '/^docs\/sprints\/sprint-[0-9]{3}.*\.md$/ {
 if [[ "${#sprint_docs[@]}" -eq 0 ]]; then
   RESULT="fail"
   REASON="governance-impacting changes require sprint docs in docs/sprints/"
-  write_report_list "evaluated_sprint_docs" "${sprint_docs[@]}"
+  write_report_list "evaluated_sprint_docs" "${sprint_docs[@]-}"
   write_report_line "result: fail"
   write_report_line "reason: governance-impacting changes require sprint docs in docs/sprints/"
   echo "ERROR: Governance-impacting PRs must update a sprint doc in docs/sprints/." >&2
   exit 1
 fi
 
-write_report_list "evaluated_sprint_docs" "${sprint_docs[@]}"
+write_report_list "evaluated_sprint_docs" "${sprint_docs[@]-}"
 
 has_checklist_ref=0
 for sprint_doc in "${sprint_docs[@]}"; do
@@ -190,8 +195,8 @@ for sprint_doc in "${sprint_docs[@]}"; do
   fi
 done
 
-write_report_list "sprint_docs_with_checklist_reference" "${checklist_ref_docs[@]}"
-write_report_list "sprint_docs_missing_checklist_reference" "${missing_checklist_ref_docs[@]}"
+write_report_list "sprint_docs_with_checklist_reference" "${checklist_ref_docs[@]-}"
+write_report_list "sprint_docs_missing_checklist_reference" "${missing_checklist_ref_docs[@]-}"
 
 if [[ "$STRICT_SPRINT_DOC_REFERENCE_BOOL" == "true" && "${#missing_checklist_ref_docs[@]}" -gt 0 ]]; then
   RESULT="fail"
