@@ -30,6 +30,8 @@ jobs:
       - name: Verify governance sprint checklist reference (PRs)
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          STRICT_SPRINT_DOC_REFERENCE: ${{ vars.STRICT_SPRINT_DOC_REFERENCE || '0' }}
         run: |
           git fetch --no-tags origin "${{ github.base_ref }}"
           ./scripts/verify-governance-sprint-checklist.sh "origin/${{ github.base_ref }}" "HEAD"

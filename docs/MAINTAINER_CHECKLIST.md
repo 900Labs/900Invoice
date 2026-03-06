@@ -31,6 +31,7 @@ Checklist:
   - `REQUIRED_APPROVING_REVIEW_COUNT`
   - `REQUIRE_CODE_OWNER_REVIEWS`
   - `REQUIRE_LAST_PUSH_APPROVAL`
+  - `STRICT_SPRINT_DOC_REFERENCE` (`0`/`1` for governance sprint-doc enforcement strictness)
 
 ---
 

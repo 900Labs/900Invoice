@@ -63,7 +63,9 @@ Workflow outputs:
 
 1. `900invoice-<version>-src.tar.gz`
 2. `SHA256SUMS.txt`
-3. `release-governance-diff-context-<tag>` artifact containing `release-governance-diff-context.txt`
+3. `release-governance-diff-context-<tag>` artifact containing:
+   - `release-governance-diff-context.txt`
+   - `release-governance-diff-context.json`
 
 Artifacts are uploaded to the workflow run and source bundle/checksum are attached to the GitHub Release.
 
@@ -72,6 +74,7 @@ The workflow summary also includes:
 1. Selected governance diff base ref.
 2. Governance checklist enforcement outcome.
 3. Embedded governance diff context payload.
+4. Location of machine-readable JSON governance trace.
 
 ---
 
@@ -91,6 +94,7 @@ Release workflow governance verification defaults to `solo` unless repository va
 2. `REQUIRED_APPROVING_REVIEW_COUNT` (optional override)
 3. `REQUIRE_CODE_OWNER_REVIEWS` (optional override)
 4. `REQUIRE_LAST_PUSH_APPROVAL` (optional override)
+5. `STRICT_SPRINT_DOC_REFERENCE` (`0`/`1`; when `1`, all changed sprint docs must reference `docs/MAINTAINER_CHECKLIST.md`)
 
 ---
 
