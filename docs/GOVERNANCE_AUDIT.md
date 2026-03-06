@@ -16,6 +16,9 @@ This document defines the automated governance drift audit for repository settin
    - `STRICT=1 ./scripts/verify-repo-policy.sh 900Labs/900Invoice main`
 2. API command documentation parity through:
    - `./scripts/verify-api-doc-commands.sh`
+3. Profile assertion artifact generation:
+   - `governance-profile-assertion-<run_id>`
+   - captures resolved policy inputs for triage
 
 ## Token Behavior
 
@@ -74,3 +77,17 @@ The workflow automatically routes failures to GitHub Issues:
    - remediation checklist
 
 This keeps governance failures visible even when maintainers are not actively monitoring Actions runs.
+
+## Profile Assertion Artifact
+
+Each run uploads one artifact:
+
+1. Name: `governance-profile-assertion-<run_id>`
+2. File: `governance-profile-assertion.txt`
+3. Fields include:
+   - resolved profile
+   - resolved review/code-owner/last-push flags
+   - input and repository-variable override values
+   - UTC timestamp
+
+Use this artifact during incident triage to confirm what policy contract the workflow actually evaluated.

@@ -33,45 +33,87 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve governance profile inputs
+        id: resolve_profile
+        shell: bash
+        env:
+          GOVERNANCE_PROFILE_INPUT: ${{ github.event.inputs.governance_profile || '' }}
+          DEFAULT_GOVERNANCE_PROFILE: ${{ vars.GOVERNANCE_PROFILE || 'solo' }}
+          REVIEW_COUNT_OVERRIDE: ${{ github.event.inputs.required_approving_review_count || '' }}
+          CODE_OWNER_OVERRIDE: ${{ vars.REQUIRE_CODE_OWNER_REVIEWS || '' }}
+          LAST_PUSH_OVERRIDE: ${{ vars.REQUIRE_LAST_PUSH_APPROVAL || '' }}
+        run: |
+          if [[ -n "${GOVERNANCE_PROFILE_INPUT}" ]]; then
+            export GOVERNANCE_PROFILE="${GOVERNANCE_PROFILE_INPUT}"
+          else
+            export GOVERNANCE_PROFILE="${DEFAULT_GOVERNANCE_PROFILE}"
+          fi
+
+          if [[ -n "${REVIEW_COUNT_OVERRIDE}" ]]; then
+            export REQUIRED_APPROVING_REVIEW_COUNT="${REVIEW_COUNT_OVERRIDE}"
+          else
+            unset REQUIRED_APPROVING_REVIEW_COUNT
+          fi
+
+          if [[ -n "${CODE_OWNER_OVERRIDE}" ]]; then
+            export REQUIRE_CODE_OWNER_REVIEWS="${CODE_OWNER_OVERRIDE}"
+          else
+            unset REQUIRE_CODE_OWNER_REVIEWS
+          fi
+
+          if [[ -n "${LAST_PUSH_OVERRIDE}" ]]; then
+            export REQUIRE_LAST_PUSH_APPROVAL="${LAST_PUSH_OVERRIDE}"
+          else
+            unset REQUIRE_LAST_PUSH_APPROVAL
+          fi
+
+          source ./scripts/governance-profile-env.sh
+          governance_profile_resolve
+
+          mkdir -p .tmp
+          {
+            echo "governance_profile=${GOVERNANCE_PROFILE}"
+            echo "required_approving_review_count=${REQUIRED_APPROVING_REVIEW_COUNT}"
+            echo "require_code_owner_reviews=${REQUIRE_CODE_OWNER_REVIEWS}"
+            echo "require_last_push_approval=${REQUIRE_LAST_PUSH_APPROVAL}"
+            echo "governance_profile_input=${GOVERNANCE_PROFILE_INPUT:-none}"
+            echo "review_count_override_input=${REVIEW_COUNT_OVERRIDE:-none}"
+            echo "code_owner_override_var=${CODE_OWNER_OVERRIDE:-none}"
+            echo "last_push_override_var=${LAST_PUSH_OVERRIDE:-none}"
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > .tmp/governance-profile-assertion.txt
+
+          echo "resolved_governance_profile=${GOVERNANCE_PROFILE}" >> "$GITHUB_OUTPUT"
+          echo "resolved_required_approving_review_count=${REQUIRED_APPROVING_REVIEW_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "resolved_require_code_owner_reviews=${REQUIRE_CODE_OWNER_REVIEWS}" >> "$GITHUB_OUTPUT"
+          echo "resolved_require_last_push_approval=${REQUIRE_LAST_PUSH_APPROVAL}" >> "$GITHUB_OUTPUT"
+
       - name: Verify repository policy (strict)
         id: policy_check
         shell: bash
         env:
           GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
           GH_FALLBACK_TOKEN: ${{ github.token }}
-          GOVERNANCE_PROFILE_INPUT: ${{ github.event.inputs.governance_profile || '' }}
-          DEFAULT_GOVERNANCE_PROFILE: ${{ vars.GOVERNANCE_PROFILE || 'solo' }}
-          REVIEW_COUNT_OVERRIDE: ${{ github.event.inputs.required_approving_review_count || '' }}
-          CODE_OWNER_OVERRIDE: ${{ vars.REQUIRE_CODE_OWNER_REVIEWS || '' }}
-          LAST_PUSH_OVERRIDE: ${{ vars.REQUIRE_LAST_PUSH_APPROVAL || '' }}
+          GOVERNANCE_PROFILE: ${{ steps.resolve_profile.outputs.resolved_governance_profile }}
+          REQUIRED_APPROVING_REVIEW_COUNT: ${{ steps.resolve_profile.outputs.resolved_required_approving_review_count }}
+          REQUIRE_CODE_OWNER_REVIEWS: ${{ steps.resolve_profile.outputs.resolved_require_code_owner_reviews }}
+          REQUIRE_LAST_PUSH_APPROVAL: ${{ steps.resolve_profile.outputs.resolved_require_last_push_approval }}
           STRICT: "1"
         run: |
           export GH_TOKEN="${GH_ADMIN_TOKEN:-$GH_FALLBACK_TOKEN}"
-          if [[ -n "${GOVERNANCE_PROFILE_INPUT}" ]]; then
-            export GOVERNANCE_PROFILE="${GOVERNANCE_PROFILE_INPUT}"
-          else
-            export GOVERNANCE_PROFILE="${DEFAULT_GOVERNANCE_PROFILE}"
-          fi
-          if [[ -n "${REVIEW_COUNT_OVERRIDE}" ]]; then
-            export REQUIRED_APPROVING_REVIEW_COUNT="${REVIEW_COUNT_OVERRIDE}"
-          else
-            unset REQUIRED_APPROVING_REVIEW_COUNT
-          fi
-          if [[ -n "${CODE_OWNER_OVERRIDE}" ]]; then
-            export REQUIRE_CODE_OWNER_REVIEWS="${CODE_OWNER_OVERRIDE}"
-          else
-            unset REQUIRE_CODE_OWNER_REVIEWS
-          fi
-          if [[ -n "${LAST_PUSH_OVERRIDE}" ]]; then
-            export REQUIRE_LAST_PUSH_APPROVAL="${LAST_PUSH_OVERRIDE}"
-          else
-            unset REQUIRE_LAST_PUSH_APPROVAL
-          fi
           ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
 
       - name: Verify API docs parity
         id: api_docs_check
         run: ./scripts/verify-api-doc-commands.sh
+
+      - name: Upload governance profile assertion
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-profile-assertion-${{ github.run_id }}
+          path: .tmp/governance-profile-assertion.txt
+          if-no-files-found: error
 
       - name: Open or update governance incident issue
         if: failure()
@@ -79,8 +121,10 @@ jobs:
         env:
           POLICY_OUTCOME: ${{ steps.policy_check.outcome }}
           API_DOCS_OUTCOME: ${{ steps.api_docs_check.outcome }}
-          EXPECTED_GOVERNANCE_PROFILE: ${{ github.event.inputs.governance_profile || vars.GOVERNANCE_PROFILE || 'solo' }}
+          EXPECTED_GOVERNANCE_PROFILE: ${{ steps.resolve_profile.outputs.resolved_governance_profile }}
           EXPECTED_REVIEW_COUNT_OVERRIDE: ${{ github.event.inputs.required_approving_review_count || '' }}
+          EXPECTED_CODE_OWNER: ${{ steps.resolve_profile.outputs.resolved_require_code_owner_reviews }}
+          EXPECTED_LAST_PUSH_APPROVAL: ${{ steps.resolve_profile.outputs.resolved_require_last_push_approval }}
         with:
           script: |
             const owner = context.repo.owner;
@@ -121,6 +165,8 @@ jobs:
               `- Workflow run: ${runUrl}`,
               `- Expected governance profile: ${process.env.EXPECTED_GOVERNANCE_PROFILE ?? "solo"}`,
               `- Required review override: ${process.env.EXPECTED_REVIEW_COUNT_OVERRIDE || "none"}`,
+              `- Require code-owner reviews: ${process.env.EXPECTED_CODE_OWNER ?? "unknown"}`,
+              `- Require last-push approval: ${process.env.EXPECTED_LAST_PUSH_APPROVAL ?? "unknown"}`,
               `- Policy check outcome: ${process.env.POLICY_OUTCOME ?? "unknown"}`,
               `- API docs parity outcome: ${process.env.API_DOCS_OUTCOME ?? "unknown"}`,
               "",

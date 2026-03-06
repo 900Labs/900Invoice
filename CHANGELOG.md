@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added governance-audit runbook at `docs/GOVERNANCE_AUDIT.md`.
 - Added automated governance incident issue routing on governance-audit workflow failures.
 - Added governance profile presets (`solo`, `small-team`, `enterprise`) with shared env-contract resolution for policy scripts.
+- Added governance profile onboarding examples for maintainers in `CONTRIBUTING.md`.
+- Added governance-audit profile assertion artifact for workflow triage.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
