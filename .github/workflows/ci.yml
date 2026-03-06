@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Verify API docs parity
         run: ./scripts/verify-api-doc-commands.sh
@@ -29,7 +31,7 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
-          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          git fetch --no-tags origin "${{ github.base_ref }}"
           ./scripts/verify-governance-sprint-checklist.sh "origin/${{ github.base_ref }}" "HEAD"
 
       - name: Setup Node.js
