@@ -38,6 +38,7 @@ Maintainer reference: use `docs/MAINTAINER_CHECKLIST.md` for governance profile 
 1. A sprint document in `docs/sprints/`:
    - Suggested path: `docs/sprints/sprint-XXX-<slug>.md`
    - Include scope, goals, deliverables, validation, and follow-ups.
+   - For governance-impacting sprints, include a reference to `docs/MAINTAINER_CHECKLIST.md`.
 2. A complete PR description:
    - Summary
    - Problem statement
