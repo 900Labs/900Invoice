@@ -33,6 +33,8 @@ The goal is simple: every sprint must leave a high-quality paper trail that help
 
 Each sprint must include the following:
 
+Maintainer reference: use `docs/MAINTAINER_CHECKLIST.md` for governance profile selection, policy verification, and merge handoff checks.
+
 1. A sprint document in `docs/sprints/`:
    - Suggested path: `docs/sprints/sprint-XXX-<slug>.md`
    - Include scope, goals, deliverables, validation, and follow-ups.

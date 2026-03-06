@@ -424,6 +424,7 @@ Also update:
 All contributions in this repository follow the sprint workflow defined in:
 
 - `docs/SPRINT_PROCESS.md`
+- `docs/MAINTAINER_CHECKLIST.md` (maintainer handoff/governance checks)
 
 Before opening a PR, ensure your sprint includes:
 
@@ -547,6 +548,8 @@ Maintainer review is strongly recommended for all PRs, but branch protection cur
 ---
 
 ## Governance Profile Onboarding (Maintainers)
+
+Reference checklist: `docs/MAINTAINER_CHECKLIST.md`
 
 Choose a governance profile based on maintainer capacity and repository risk:
 
