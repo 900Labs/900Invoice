@@ -190,6 +190,7 @@ Your data never leaves your machine unless you explicitly export it.
 - [Internationalization Guide](docs/I18N.md) — add languages, RTL support
 - [Deployment Guide](docs/DEPLOYMENT.md) — build and distribute for all platforms
 - [Release Runbook](docs/RELEASE.md) — tagged release flow, artifacts, and checklist
+- [Maintainer Checklist](docs/MAINTAINER_CHECKLIST.md) — governance profile, policy verification, and sprint/release handoff checklist
 - [Branch Protection Policy](docs/BRANCH_PROTECTION.md) — required merge and branch safeguards for `main`
 - [Governance Audit](docs/GOVERNANCE_AUDIT.md) — scheduled drift detection for policy and docs parity
 - [Sprint Process](docs/SPRINT_PROCESS.md) — required sprint workflow and squash-merge policy

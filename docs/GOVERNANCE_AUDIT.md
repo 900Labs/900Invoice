@@ -91,3 +91,5 @@ Each run uploads one artifact:
    - UTC timestamp
 
 Use this artifact during incident triage to confirm what policy contract the workflow actually evaluated.
+
+Maintainer triage checklist is available at `docs/MAINTAINER_CHECKLIST.md`.

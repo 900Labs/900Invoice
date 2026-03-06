@@ -24,6 +24,8 @@ Not yet automated:
 
 Before creating a release tag:
 
+Use `docs/MAINTAINER_CHECKLIST.md` for maintainer governance/profile verification before this checklist.
+
 1. Ensure `main` is green in CI.
 2. Verify repository policy:
    - `./scripts/verify-repo-policy.sh 900Labs/900Invoice main`

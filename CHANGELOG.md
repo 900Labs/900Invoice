@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added governance profile presets (`solo`, `small-team`, `enterprise`) with shared env-contract resolution for policy scripts.
 - Added governance profile onboarding examples for maintainers in `CONTRIBUTING.md`.
 - Added governance-audit profile assertion artifact for workflow triage.
+- Added `docs/MAINTAINER_CHECKLIST.md` with governance profile selection and policy verification handoff checklist.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
@@ -53,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added strict repository-policy verification step to release workflow.
 - Made branch-protection approval requirements configurable in policy scripts with `REQUIRED_APPROVING_REVIEW_COUNT` and set default governance baseline to `0` required approvals for autonomous maintainer operation.
 - Updated governance/release workflows to consume governance profile variables for strict policy verification across team sizes.
+- Updated contributor/sprint/release/governance docs to reference the maintainer checklist workflow.
 
 ### Fixed
 
