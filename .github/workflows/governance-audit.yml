@@ -116,6 +116,7 @@ jobs:
           if-no-files-found: error
 
       - name: Open or update governance incident issue
+        id: incident_issue
         if: failure()
         uses: actions/github-script@v7
         env:
@@ -187,6 +188,9 @@ jobs:
                 issue_number: existing.number,
                 body: incidentBody,
               });
+              core.setOutput("issue_number", String(existing.number));
+              core.setOutput("issue_url", existing.html_url);
+              core.setOutput("incident_action", "updated");
               core.info(`Updated existing governance incident issue #${existing.number}`);
               return;
             }
@@ -198,4 +202,60 @@ jobs:
               body: incidentBody,
               labels,
             });
+            core.setOutput("issue_number", String(created.data.number));
+            core.setOutput("issue_url", created.data.html_url);
+            core.setOutput("incident_action", "created");
             core.info(`Created governance incident issue #${created.data.number}`);
+
+      - name: Notify external governance incident webhook (optional)
+        if: failure() && steps.incident_issue.outcome == 'success'
+        shell: bash
+        env:
+          GOVERNANCE_INCIDENT_WEBHOOK_URL: ${{ secrets.GOVERNANCE_INCIDENT_WEBHOOK_URL }}
+          GOVERNANCE_INCIDENT_WEBHOOK_TOKEN: ${{ secrets.GOVERNANCE_INCIDENT_WEBHOOK_TOKEN || '' }}
+          INCIDENT_ACTION: ${{ steps.incident_issue.outputs.incident_action }}
+          INCIDENT_ISSUE_NUMBER: ${{ steps.incident_issue.outputs.issue_number }}
+          INCIDENT_ISSUE_URL: ${{ steps.incident_issue.outputs.issue_url }}
+          INCIDENT_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          INCIDENT_WORKFLOW: ${{ github.workflow }}
+          INCIDENT_REPOSITORY: ${{ github.repository }}
+          INCIDENT_GOVERNANCE_PROFILE: ${{ steps.resolve_profile.outputs.resolved_governance_profile }}
+          INCIDENT_POLICY_OUTCOME: ${{ steps.policy_check.outcome }}
+          INCIDENT_API_DOCS_OUTCOME: ${{ steps.api_docs_check.outcome }}
+        run: |
+          if [[ -z "${GOVERNANCE_INCIDENT_WEBHOOK_URL}" ]]; then
+            echo "No GOVERNANCE_INCIDENT_WEBHOOK_URL configured; skipping optional external notification."
+            exit 0
+          fi
+
+          mkdir -p .tmp
+          payload_file=".tmp/governance-incident-webhook-payload.json"
+          cat > "${payload_file}" <<EOF
+          {
+            "event": "governance_audit_failure",
+            "repository": "${INCIDENT_REPOSITORY}",
+            "workflow": "${INCIDENT_WORKFLOW}",
+            "run_url": "${INCIDENT_RUN_URL}",
+            "issue_number": "${INCIDENT_ISSUE_NUMBER}",
+            "issue_url": "${INCIDENT_ISSUE_URL}",
+            "incident_action": "${INCIDENT_ACTION}",
+            "governance_profile": "${INCIDENT_GOVERNANCE_PROFILE}",
+            "policy_check_outcome": "${INCIDENT_POLICY_OUTCOME}",
+            "api_docs_outcome": "${INCIDENT_API_DOCS_OUTCOME}",
+            "timestamp_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
+          auth_header=()
+          if [[ -n "${GOVERNANCE_INCIDENT_WEBHOOK_TOKEN}" ]]; then
+            auth_header=(-H "Authorization: Bearer ${GOVERNANCE_INCIDENT_WEBHOOK_TOKEN}")
+          fi
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Content-Type: application/json" \
+            "${auth_header[@]}" \
+            --data-binary @"${payload_file}" \
+            "${GOVERNANCE_INCIDENT_WEBHOOK_URL}"
+
+          echo "External governance incident webhook notification delivered."

@@ -36,6 +36,9 @@ Recommended:
    - `REQUIRED_APPROVING_REVIEW_COUNT` (optional)
    - `REQUIRE_CODE_OWNER_REVIEWS` (optional)
    - `REQUIRE_LAST_PUSH_APPROVAL` (optional)
+4. Optional external notification secrets:
+   - `GOVERNANCE_INCIDENT_WEBHOOK_URL` (endpoint for chat/email/webhook gateway notifications)
+   - `GOVERNANCE_INCIDENT_WEBHOOK_TOKEN` (optional bearer token sent as `Authorization: Bearer <token>`)
 
 ## Manual Run
 
@@ -77,6 +80,30 @@ The workflow automatically routes failures to GitHub Issues:
    - remediation checklist
 
 This keeps governance failures visible even when maintainers are not actively monitoring Actions runs.
+
+## Optional External Notifications
+
+The workflow can additionally send failure notifications to an external webhook endpoint.
+
+Configuration:
+
+1. Set `GOVERNANCE_INCIDENT_WEBHOOK_URL` in repository secrets.
+2. Optionally set `GOVERNANCE_INCIDENT_WEBHOOK_TOKEN` for bearer-authenticated receivers.
+
+Behavior:
+
+1. The notification step runs only when the workflow is already failing and after issue routing succeeds.
+2. If no webhook URL is configured, the step exits without error.
+3. The payload is JSON and includes:
+   - event (`governance_audit_failure`)
+   - repository/workflow identifiers
+   - workflow run URL
+   - incident issue URL and number
+   - resolved governance profile
+   - policy/API-doc check outcomes
+   - UTC timestamp
+
+This keeps the default governance channel transparent in GitHub Issues while allowing optional chat/email escalation through existing infrastructure.
 
 ## Profile Assertion Artifact
 
