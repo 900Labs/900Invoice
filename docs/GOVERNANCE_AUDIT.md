@@ -39,9 +39,13 @@ Recommended:
 4. Optional external notification secrets:
    - `GOVERNANCE_INCIDENT_WEBHOOK_URL` (endpoint for chat/email/webhook gateway notifications)
    - `GOVERNANCE_INCIDENT_WEBHOOK_TOKEN` (optional bearer token sent as `Authorization: Bearer <token>`)
+   - `GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET` (optional HMAC secret for signed webhook delivery)
 5. Optional governance artifact retention variable:
    - `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, default `30`)
    - controls retention for governance-audit artifacts uploaded by the workflow
+6. Optional external notification retry variables:
+   - `GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS` (`1`-`6`, default `3`)
+   - `GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS` (`1`-`30`, default `2`)
 
 ## Manual Run
 
@@ -92,12 +96,20 @@ Configuration:
 
 1. Set `GOVERNANCE_INCIDENT_WEBHOOK_URL` in repository secrets.
 2. Optionally set `GOVERNANCE_INCIDENT_WEBHOOK_TOKEN` for bearer-authenticated receivers.
+3. Optionally set `GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET` for signed payload delivery.
+4. Optionally set retry tuning repository variables:
+   - `GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS`
+   - `GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS`
 
 Behavior:
 
 1. The notification step runs only when the workflow is already failing and after issue routing succeeds.
 2. If no webhook URL is configured, the step exits without error.
-3. The payload is JSON and includes:
+3. The workflow retries failed webhook delivery attempts with linear backoff (`backoff_seconds * attempt`) up to the configured max attempts.
+4. When `GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET` is configured, the workflow sends:
+   - `X-Governance-Timestamp` (UTC epoch seconds)
+   - `X-Governance-Signature` (`sha256=<hex>` of `<timestamp>.<payload_json>`)
+5. The payload is JSON and includes:
    - event (`governance_audit_failure`)
    - repository/workflow identifiers
    - workflow run URL

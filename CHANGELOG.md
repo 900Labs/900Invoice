@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added governance diff trace JSON schema at `docs/schemas/governance-diff-trace.schema.json`.
 - Added governance trace schema validator script at `scripts/verify-governance-trace-json.sh`.
 - Added configurable governance artifact retention policy (`GOVERNANCE_ARTIFACT_RETENTION_DAYS`) for governance workflow artifacts.
+- Added governance webhook retry/backoff controls (`GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS`, `GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS`).
+- Added optional HMAC-signed governance webhook delivery using `GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET`.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
@@ -73,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated CI and release workflows to enforce governance trace JSON schema validation.
 - Updated quality/release runbooks with governance trace schema validation commands.
 - Updated governance/release/maintainer docs with governance artifact retention policy guidance.
+- Updated governance/maintainer docs with webhook retry/backoff and HMAC-signing guidance.
 
 ### Fixed
 

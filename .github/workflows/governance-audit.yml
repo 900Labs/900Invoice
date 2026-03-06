@@ -229,6 +229,9 @@ jobs:
         env:
           GOVERNANCE_INCIDENT_WEBHOOK_URL: ${{ secrets.GOVERNANCE_INCIDENT_WEBHOOK_URL }}
           GOVERNANCE_INCIDENT_WEBHOOK_TOKEN: ${{ secrets.GOVERNANCE_INCIDENT_WEBHOOK_TOKEN || '' }}
+          GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET: ${{ secrets.GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET || '' }}
+          GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS: ${{ vars.GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS || '3' }}
+          GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS: ${{ vars.GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS || '2' }}
           INCIDENT_ACTION: ${{ steps.incident_issue.outputs.incident_action }}
           INCIDENT_ISSUE_NUMBER: ${{ steps.incident_issue.outputs.issue_number }}
           INCIDENT_ISSUE_URL: ${{ steps.incident_issue.outputs.issue_url }}
@@ -242,6 +245,23 @@ jobs:
           if [[ -z "${GOVERNANCE_INCIDENT_WEBHOOK_URL}" ]]; then
             echo "No GOVERNANCE_INCIDENT_WEBHOOK_URL configured; skipping optional external notification."
             exit 0
+          fi
+
+          if [[ ! "${GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS}" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS must be an integer." >&2
+            exit 1
+          fi
+          if (( GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS < 1 || GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS > 6 )); then
+            echo "ERROR: GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS must be between 1 and 6." >&2
+            exit 1
+          fi
+          if [[ ! "${GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS}" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS must be an integer." >&2
+            exit 1
+          fi
+          if (( GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS < 1 || GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS > 30 )); then
+            echo "ERROR: GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS must be between 1 and 30." >&2
+            exit 1
           fi
 
           mkdir -p .tmp
@@ -267,11 +287,47 @@ jobs:
             auth_header=(-H "Authorization: Bearer ${GOVERNANCE_INCIDENT_WEBHOOK_TOKEN}")
           fi
 
-          curl --fail --silent --show-error \
-            -X POST \
-            -H "Content-Type: application/json" \
-            "${auth_header[@]}" \
-            --data-binary @"${payload_file}" \
-            "${GOVERNANCE_INCIDENT_WEBHOOK_URL}"
+          signature_headers=()
+          if [[ -n "${GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET}" ]]; then
+            if ! command -v openssl >/dev/null 2>&1; then
+              echo "ERROR: openssl is required when GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET is configured." >&2
+              exit 1
+            fi
+
+            webhook_timestamp="$(date -u +%s)"
+            webhook_payload="$(cat "${payload_file}")"
+            signature_input="${webhook_timestamp}.${webhook_payload}"
+            signature_hex="$(printf '%s' "${signature_input}" | openssl dgst -sha256 -hmac "${GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET}" | sed 's/^.*= //')"
+            signature_headers=(
+              -H "X-Governance-Timestamp: ${webhook_timestamp}"
+              -H "X-Governance-Signature: sha256=${signature_hex}"
+            )
+          fi
+
+          webhook_ok=0
+          for attempt in $(seq 1 "${GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS}"); do
+            echo "Webhook delivery attempt ${attempt}/${GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS}..."
+            if curl --fail --silent --show-error \
+              -X POST \
+              -H "Content-Type: application/json" \
+              "${auth_header[@]}" \
+              "${signature_headers[@]}" \
+              --data-binary @"${payload_file}" \
+              "${GOVERNANCE_INCIDENT_WEBHOOK_URL}"; then
+              webhook_ok=1
+              break
+            fi
+
+            if (( attempt < GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS )); then
+              sleep_seconds=$((GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS * attempt))
+              echo "Webhook delivery failed on attempt ${attempt}; retrying in ${sleep_seconds}s..."
+              sleep "${sleep_seconds}"
+            fi
+          done
+
+          if (( webhook_ok != 1 )); then
+            echo "ERROR: external governance incident webhook delivery failed after ${GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS} attempts." >&2
+            exit 1
+          fi
 
           echo "External governance incident webhook notification delivered."
