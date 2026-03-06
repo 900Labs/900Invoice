@@ -33,6 +33,8 @@ Checklist:
   - `REQUIRE_LAST_PUSH_APPROVAL`
   - `STRICT_SPRINT_DOC_REFERENCE` (`0`/`1` for governance sprint-doc enforcement strictness)
   - `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, default `30` for governance artifacts)
+  - `GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS` (`1`-`6`, default `3`)
+  - `GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS` (`1`-`30`, default `2`)
 
 ---
 
@@ -90,6 +92,8 @@ Checklist for governance incidents:
 - [ ] Update/close governance incident issue with remediation details.
 - [ ] If external escalation is required, confirm `GOVERNANCE_INCIDENT_WEBHOOK_URL` secret is configured.
 - [ ] If webhook receiver requires auth, confirm `GOVERNANCE_INCIDENT_WEBHOOK_TOKEN` secret is configured and valid.
+- [ ] If signed webhook delivery is required, confirm `GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET` is configured on sender and verifier.
+- [ ] Confirm webhook retry variables are set to expected values for response-time/SLO needs.
 
 ---
 
