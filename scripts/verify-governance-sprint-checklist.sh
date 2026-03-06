@@ -43,7 +43,11 @@ if [[ "$governance_touched" -eq 0 ]]; then
   exit 0
 fi
 
-mapfile -t sprint_docs < <(echo "$changed_files" | awk '/^docs\/sprints\/sprint-[0-9]{3}.*\.md$/ {print}')
+sprint_docs=()
+while IFS= read -r sprint_doc; do
+  [[ -z "$sprint_doc" ]] && continue
+  sprint_docs+=("$sprint_doc")
+done < <(echo "$changed_files" | awk '/^docs\/sprints\/sprint-[0-9]{3}.*\.md$/ {print}')
 
 if [[ "${#sprint_docs[@]}" -eq 0 ]]; then
   echo "ERROR: Governance-impacting PRs must update a sprint doc in docs/sprints/." >&2
