@@ -13,7 +13,8 @@ Automated in GitHub Actions (`.github/workflows/release.yml`):
 3. Generate SHA-256 checksum file.
 4. Publish artifacts to a GitHub Release for version tags (`v*`).
 5. Enforce governance sprint-checklist parity against release diff scope.
-6. Publish governance diff trace summary and artifact for auditability.
+6. Validate governance diff trace JSON against schema contract.
+7. Publish governance diff trace summary and artifact for auditability.
 
 Not yet automated:
 
@@ -35,6 +36,8 @@ Use `docs/MAINTAINER_CHECKLIST.md` for maintainer governance/profile verificatio
    - If using non-`solo` governance, set matching profile env vars (for example `GOVERNANCE_PROFILE=small-team`).
 3. Verify governance sprint checklist parity (same rule enforced in CI + release gate):
    - `./scripts/verify-governance-sprint-checklist.sh origin/main HEAD`
+   - `REPORT_JSON_PATH=/tmp/release-governance-diff-context.json ./scripts/verify-governance-sprint-checklist.sh origin/main HEAD`
+   - `./scripts/verify-governance-trace-json.sh /tmp/release-governance-diff-context.json`
 4. Run local quality gate:
    - `./scripts/verify-api-doc-commands.sh`
    - `npm install`
@@ -66,6 +69,8 @@ Workflow outputs:
 3. `release-governance-diff-context-<tag>` artifact containing:
    - `release-governance-diff-context.txt`
    - `release-governance-diff-context.json`
+4. Governance trace schema contract:
+   - `docs/schemas/governance-diff-trace.schema.json`
 
 Artifacts are uploaded to the workflow run and source bundle/checksum are attached to the GitHub Release.
 
@@ -75,6 +80,7 @@ The workflow summary also includes:
 2. Governance checklist enforcement outcome.
 3. Embedded governance diff context payload.
 4. Location of machine-readable JSON governance trace.
+5. Schema validation is enforced by `scripts/verify-governance-trace-json.sh`.
 
 ---
 

@@ -33,6 +33,13 @@ Notes:
 2. If your environment already uses a shared target dir, keep the same dedicated value for all Rust commands in that session.
 3. Keep the API command catalog block in `docs/API.md` synchronized with `src-tauri/src/lib.rs`.
 
+For governance-impacting changes, also run:
+
+```bash
+REPORT_JSON_PATH=/tmp/ci-governance-diff-context.json ./scripts/verify-governance-sprint-checklist.sh origin/main HEAD
+./scripts/verify-governance-trace-json.sh /tmp/ci-governance-diff-context.json
+```
+
 ---
 
 ## CI Enforcement
