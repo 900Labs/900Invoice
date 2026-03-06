@@ -76,6 +76,8 @@ Checklist for governance incidents:
 - [ ] Re-apply policy if drift is confirmed.
 - [ ] Re-run governance audit and confirm pass.
 - [ ] Update/close governance incident issue with remediation details.
+- [ ] If external escalation is required, confirm `GOVERNANCE_INCIDENT_WEBHOOK_URL` secret is configured.
+- [ ] If webhook receiver requires auth, confirm `GOVERNANCE_INCIDENT_WEBHOOK_TOKEN` secret is configured and valid.
 
 ---
 
