@@ -90,9 +90,12 @@ jobs:
       - name: Verify governance sprint checklist reference
         id: gov_check
         shell: bash
+        env:
+          STRICT_SPRINT_DOC_REFERENCE: ${{ vars.STRICT_SPRINT_DOC_REFERENCE || '0' }}
         run: |
           mkdir -p .tmp
           REPORT_PATH=".tmp/release-governance-diff-context.txt" \
+          REPORT_JSON_PATH=".tmp/release-governance-diff-context.json" \
             ./scripts/verify-governance-sprint-checklist.sh "${{ steps.gov_base.outputs.base_ref }}" "HEAD"
 
       - name: Publish governance diff trace summary
@@ -115,6 +118,8 @@ jobs:
             else
               echo "_No governance diff context file was generated._"
             fi
+            echo ""
+            echo "JSON trace file: \`.tmp/release-governance-diff-context.json\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload governance diff context artifact
@@ -122,7 +127,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-governance-diff-context-${{ steps.meta.outputs.tag }}
-          path: .tmp/release-governance-diff-context.txt
+          path: |
+            .tmp/release-governance-diff-context.txt
+            .tmp/release-governance-diff-context.json
           if-no-files-found: warn
 
       - name: Setup Node.js
