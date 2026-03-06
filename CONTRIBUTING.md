@@ -546,6 +546,47 @@ Maintainer review is strongly recommended for all PRs, but branch protection cur
 
 ---
 
+## Governance Profile Onboarding (Maintainers)
+
+Choose a governance profile based on maintainer capacity and repository risk:
+
+1. `solo`
+   - Best for one active maintainer.
+   - Defaults: `0` required approvals, no code-owner requirement, no last-push approval requirement.
+2. `small-team`
+   - Best for 2-5 maintainers with shared review coverage.
+   - Defaults: `1` required approval, last-push approval required.
+3. `enterprise`
+   - Best for larger teams with strict change-control expectations.
+   - Defaults: `2` required approvals, code-owner reviews + last-push approval required.
+
+Apply and verify examples:
+
+```bash
+# solo (default)
+GOVERNANCE_PROFILE=solo ./scripts/apply-repo-policy.sh 900Labs/900Invoice main
+GOVERNANCE_PROFILE=solo ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+
+# small-team
+GOVERNANCE_PROFILE=small-team ./scripts/apply-repo-policy.sh 900Labs/900Invoice main
+GOVERNANCE_PROFILE=small-team ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+
+# enterprise
+GOVERNANCE_PROFILE=enterprise ./scripts/apply-repo-policy.sh 900Labs/900Invoice main
+GOVERNANCE_PROFILE=enterprise ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+```
+
+Automation defaults:
+
+1. Set repository variable `GOVERNANCE_PROFILE` to your target profile.
+2. Optionally set overrides:
+   - `REQUIRED_APPROVING_REVIEW_COUNT`
+   - `REQUIRE_CODE_OWNER_REVIEWS`
+   - `REQUIRE_LAST_PUSH_APPROVAL`
+3. Governance audit and release gate workflows consume the same contract.
+
+---
+
 ## Getting Help
 
 - **GitHub Discussions**: [github.com/900Labs/900Invoice/discussions](https://github.com/900Labs/900Invoice/discussions) — for questions, ideas, and general discussion
