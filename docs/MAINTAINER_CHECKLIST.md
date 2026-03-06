@@ -32,6 +32,7 @@ Checklist:
   - `REQUIRE_CODE_OWNER_REVIEWS`
   - `REQUIRE_LAST_PUSH_APPROVAL`
   - `STRICT_SPRINT_DOC_REFERENCE` (`0`/`1` for governance sprint-doc enforcement strictness)
+  - `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, default `30` for governance artifacts)
 
 ---
 

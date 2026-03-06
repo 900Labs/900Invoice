@@ -39,6 +39,9 @@ Recommended:
 4. Optional external notification secrets:
    - `GOVERNANCE_INCIDENT_WEBHOOK_URL` (endpoint for chat/email/webhook gateway notifications)
    - `GOVERNANCE_INCIDENT_WEBHOOK_TOKEN` (optional bearer token sent as `Authorization: Bearer <token>`)
+5. Optional governance artifact retention variable:
+   - `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, default `30`)
+   - controls retention for governance-audit artifacts uploaded by the workflow
 
 ## Manual Run
 
@@ -116,6 +119,9 @@ Each run uploads one artifact:
    - resolved review/code-owner/last-push flags
    - input and repository-variable override values
    - UTC timestamp
+4. Retention:
+   - configured by `GOVERNANCE_ARTIFACT_RETENTION_DAYS`
+   - workflow enforces valid range `1` to `90`
 
 Use this artifact during incident triage to confirm what policy contract the workflow actually evaluated.
 
