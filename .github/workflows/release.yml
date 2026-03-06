@@ -98,6 +98,9 @@ jobs:
           REPORT_JSON_PATH=".tmp/release-governance-diff-context.json" \
             ./scripts/verify-governance-sprint-checklist.sh "${{ steps.gov_base.outputs.base_ref }}" "HEAD"
 
+      - name: Validate governance trace JSON schema
+        run: ./scripts/verify-governance-trace-json.sh .tmp/release-governance-diff-context.json
+
       - name: Publish governance diff trace summary
         if: always()
         shell: bash

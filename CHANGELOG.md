@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added machine-readable JSON governance trace output (`release-governance-diff-context.json`) in release-gate artifacts.
 - Added optional external governance-incident webhook notifications in `.github/workflows/governance-audit.yml`.
 - Added governance sprint-doc checklist completion block enforcement in `scripts/verify-governance-sprint-checklist.sh`.
+- Added governance diff trace JSON schema at `docs/schemas/governance-diff-trace.schema.json`.
+- Added governance trace schema validator script at `scripts/verify-governance-trace-json.sh`.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
@@ -67,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated governance checklist enforcement with optional strict mode (`STRICT_SPRINT_DOC_REFERENCE`) for all changed sprint docs.
 - Updated governance audit runbook and maintainer checklist with optional external incident webhook setup guidance.
 - Updated sprint and maintainer process docs with a stable `MAINTAINER_CHECKLIST_COMPLETION` sprint-doc block template.
+- Updated CI and release workflows to enforce governance trace JSON schema validation.
+- Updated quality/release runbooks with governance trace schema validation commands.
 
 ### Fixed
 

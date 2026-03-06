@@ -33,8 +33,14 @@ jobs:
         env:
           STRICT_SPRINT_DOC_REFERENCE: ${{ vars.STRICT_SPRINT_DOC_REFERENCE || '0' }}
         run: |
+          mkdir -p .tmp
           git fetch --no-tags origin "${{ github.base_ref }}"
-          ./scripts/verify-governance-sprint-checklist.sh "origin/${{ github.base_ref }}" "HEAD"
+          REPORT_JSON_PATH=".tmp/ci-governance-diff-context.json" \
+            ./scripts/verify-governance-sprint-checklist.sh "origin/${{ github.base_ref }}" "HEAD"
+
+      - name: Validate governance trace JSON schema (PRs)
+        if: github.event_name == 'pull_request'
+        run: ./scripts/verify-governance-trace-json.sh .tmp/ci-governance-diff-context.json
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

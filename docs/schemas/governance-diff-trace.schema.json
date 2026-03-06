@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/900Labs/900Invoice/docs/schemas/governance-diff-trace.schema.json",
+  "title": "Governance Diff Trace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "timestamp_utc",
+    "base_ref",
+    "head_ref",
+    "strict_sprint_doc_reference",
+    "changed_files",
+    "governance_changed_files",
+    "evaluated_sprint_docs",
+    "sprint_docs_with_checklist_reference",
+    "sprint_docs_missing_checklist_reference",
+    "sprint_docs_with_checklist_completion_block",
+    "sprint_docs_missing_checklist_completion_block",
+    "sprint_docs_incomplete_checklist_completion_block",
+    "result",
+    "reason"
+  ],
+  "properties": {
+    "timestamp_utc": { "type": "string", "minLength": 1 },
+    "base_ref": { "type": "string", "minLength": 1 },
+    "head_ref": { "type": "string", "minLength": 1 },
+    "strict_sprint_doc_reference": { "type": "boolean" },
+    "changed_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "governance_changed_files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evaluated_sprint_docs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sprint_docs_with_checklist_reference": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sprint_docs_missing_checklist_reference": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sprint_docs_with_checklist_completion_block": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sprint_docs_missing_checklist_completion_block": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sprint_docs_incomplete_checklist_completion_block": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "result": {
+      "type": "string",
+      "enum": ["pass", "fail"]
+    },
+    "reason": { "type": "string", "minLength": 1 }
+  }
+}
