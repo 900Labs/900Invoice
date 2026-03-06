@@ -13,6 +13,7 @@ Automated in GitHub Actions (`.github/workflows/release.yml`):
 3. Generate SHA-256 checksum file.
 4. Publish artifacts to a GitHub Release for version tags (`v*`).
 5. Enforce governance sprint-checklist parity against release diff scope.
+6. Publish governance diff trace summary and artifact for auditability.
 
 Not yet automated:
 
@@ -62,8 +63,15 @@ Workflow outputs:
 
 1. `900invoice-<version>-src.tar.gz`
 2. `SHA256SUMS.txt`
+3. `release-governance-diff-context-<tag>` artifact containing `release-governance-diff-context.txt`
 
-Artifacts are uploaded to the workflow run and attached to the GitHub Release.
+Artifacts are uploaded to the workflow run and source bundle/checksum are attached to the GitHub Release.
+
+The workflow summary also includes:
+
+1. Selected governance diff base ref.
+2. Governance checklist enforcement outcome.
+3. Embedded governance diff context payload.
 
 ---
 
