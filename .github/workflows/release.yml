@@ -67,6 +67,30 @@ jobs:
       - name: Verify API docs parity
         run: ./scripts/verify-api-doc-commands.sh
 
+      - name: Resolve governance checklist diff base
+        id: gov_base
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
+            git fetch --tags --force
+            current_tag="${GITHUB_REF_NAME}"
+            previous_tag="$(git tag --sort=-creatordate | grep -Fxv "${current_tag}" | head -n1 || true)"
+            if [[ -n "${previous_tag}" ]]; then
+              base_ref="${previous_tag}"
+            else
+              base_ref="$(git rev-list --max-parents=0 HEAD | tail -n1)"
+            fi
+          else
+            git fetch --no-tags origin main
+            base_ref="origin/main"
+          fi
+          echo "base_ref=${base_ref}" >> "$GITHUB_OUTPUT"
+          echo "Governance checklist diff base: ${base_ref}"
+
+      - name: Verify governance sprint checklist reference
+        shell: bash
+        run: ./scripts/verify-governance-sprint-checklist.sh "${{ steps.gov_base.outputs.base_ref }}" "HEAD"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
