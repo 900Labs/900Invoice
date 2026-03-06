@@ -65,6 +65,20 @@ Link the sprint doc updated/created by this PR:
 
 `docs/sprints/sprint-XXX-<slug>.md`
 
+## Maintainer Governance Confirmation (If Applicable)
+
+Complete this section when the PR changes governance-impacting files (policy scripts, governance workflows, branch/release/process governance docs, or this PR template):
+
+- Governance-impacting change:
+  - [ ] Yes
+  - [ ] No
+- If `Yes`, sprint doc references `docs/MAINTAINER_CHECKLIST.md`:
+  - [ ] Confirmed
+- If `Yes`, maintainer checklist was reviewed:
+  - [ ] Governance profile selection
+  - [ ] Policy apply/verify commands
+  - [ ] Audit/release checklist alignment
+
 ## Checklist
 
 - [ ] PR title is descriptive and follows `<type>(<scope>): <summary>`

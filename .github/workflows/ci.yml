@@ -25,6 +25,13 @@ jobs:
       - name: Verify API docs parity
         run: ./scripts/verify-api-doc-commands.sh
 
+      - name: Verify governance sprint checklist reference (PRs)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          ./scripts/verify-governance-sprint-checklist.sh "origin/${{ github.base_ref }}" "HEAD"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:

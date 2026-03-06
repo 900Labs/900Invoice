@@ -432,6 +432,7 @@ Before opening a PR, ensure your sprint includes:
 2. Implementation and documentation updates in the same change set
 3. Validation evidence (commands + results) captured in the PR body
 4. Quality gate execution based on `docs/QUALITY_GATE.md`
+5. For governance-impacting changes, complete the PR template governance confirmation section and reference `docs/MAINTAINER_CHECKLIST.md` in the sprint record
 
 All sprint PRs must be merged with **Squash and merge**.
 
