@@ -45,9 +45,24 @@ jobs:
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
       - name: Verify repository policy (strict)
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
+          GOVERNANCE_PROFILE: ${{ vars.GOVERNANCE_PROFILE || 'solo' }}
+          REQUIRED_APPROVING_REVIEW_COUNT: ${{ vars.REQUIRED_APPROVING_REVIEW_COUNT || '' }}
+          REQUIRE_CODE_OWNER_REVIEWS: ${{ vars.REQUIRE_CODE_OWNER_REVIEWS || '' }}
+          REQUIRE_LAST_PUSH_APPROVAL: ${{ vars.REQUIRE_LAST_PUSH_APPROVAL || '' }}
+        run: |
+          if [[ -z "${REQUIRED_APPROVING_REVIEW_COUNT}" ]]; then
+            unset REQUIRED_APPROVING_REVIEW_COUNT
+          fi
+          if [[ -z "${REQUIRE_CODE_OWNER_REVIEWS}" ]]; then
+            unset REQUIRE_CODE_OWNER_REVIEWS
+          fi
+          if [[ -z "${REQUIRE_LAST_PUSH_APPROVAL}" ]]; then
+            unset REQUIRE_LAST_PUSH_APPROVAL
+          fi
+          ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
 
       - name: Verify API docs parity
         run: ./scripts/verify-api-doc-commands.sh

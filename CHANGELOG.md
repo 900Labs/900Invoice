@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added branch protection policy runbook at `docs/BRANCH_PROTECTION.md`.
 - Added governance-audit runbook at `docs/GOVERNANCE_AUDIT.md`.
 - Added automated governance incident issue routing on governance-audit workflow failures.
+- Added governance profile presets (`solo`, `small-team`, `enterprise`) with shared env-contract resolution for policy scripts.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
@@ -49,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Activated `main` branch protection and strict governance verification.
 - Added strict repository-policy verification step to release workflow.
 - Made branch-protection approval requirements configurable in policy scripts with `REQUIRED_APPROVING_REVIEW_COUNT` and set default governance baseline to `0` required approvals for autonomous maintainer operation.
+- Updated governance/release workflows to consume governance profile variables for strict policy verification across team sizes.
 
 ### Fixed
 

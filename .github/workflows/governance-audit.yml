@@ -5,10 +5,15 @@ on:
     - cron: "17 3 * * 1"
   workflow_dispatch:
     inputs:
-      required_approving_review_count:
-        description: "Expected required_approving_review_count for main branch protection"
+      governance_profile:
+        description: "Governance profile: solo, small-team, enterprise"
         required: false
-        default: "0"
+        default: "solo"
+        type: string
+      required_approving_review_count:
+        description: "Optional override for required_approving_review_count"
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -34,10 +39,34 @@ jobs:
         env:
           GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
           GH_FALLBACK_TOKEN: ${{ github.token }}
-          REQUIRED_APPROVING_REVIEW_COUNT: ${{ github.event.inputs.required_approving_review_count || '0' }}
+          GOVERNANCE_PROFILE_INPUT: ${{ github.event.inputs.governance_profile || '' }}
+          DEFAULT_GOVERNANCE_PROFILE: ${{ vars.GOVERNANCE_PROFILE || 'solo' }}
+          REVIEW_COUNT_OVERRIDE: ${{ github.event.inputs.required_approving_review_count || '' }}
+          CODE_OWNER_OVERRIDE: ${{ vars.REQUIRE_CODE_OWNER_REVIEWS || '' }}
+          LAST_PUSH_OVERRIDE: ${{ vars.REQUIRE_LAST_PUSH_APPROVAL || '' }}
           STRICT: "1"
         run: |
           export GH_TOKEN="${GH_ADMIN_TOKEN:-$GH_FALLBACK_TOKEN}"
+          if [[ -n "${GOVERNANCE_PROFILE_INPUT}" ]]; then
+            export GOVERNANCE_PROFILE="${GOVERNANCE_PROFILE_INPUT}"
+          else
+            export GOVERNANCE_PROFILE="${DEFAULT_GOVERNANCE_PROFILE}"
+          fi
+          if [[ -n "${REVIEW_COUNT_OVERRIDE}" ]]; then
+            export REQUIRED_APPROVING_REVIEW_COUNT="${REVIEW_COUNT_OVERRIDE}"
+          else
+            unset REQUIRED_APPROVING_REVIEW_COUNT
+          fi
+          if [[ -n "${CODE_OWNER_OVERRIDE}" ]]; then
+            export REQUIRE_CODE_OWNER_REVIEWS="${CODE_OWNER_OVERRIDE}"
+          else
+            unset REQUIRE_CODE_OWNER_REVIEWS
+          fi
+          if [[ -n "${LAST_PUSH_OVERRIDE}" ]]; then
+            export REQUIRE_LAST_PUSH_APPROVAL="${LAST_PUSH_OVERRIDE}"
+          else
+            unset REQUIRE_LAST_PUSH_APPROVAL
+          fi
           ./scripts/verify-repo-policy.sh 900Labs/900Invoice main
 
       - name: Verify API docs parity
@@ -50,7 +79,8 @@ jobs:
         env:
           POLICY_OUTCOME: ${{ steps.policy_check.outcome }}
           API_DOCS_OUTCOME: ${{ steps.api_docs_check.outcome }}
-          EXPECTED_REVIEW_COUNT: ${{ github.event.inputs.required_approving_review_count || '0' }}
+          EXPECTED_GOVERNANCE_PROFILE: ${{ github.event.inputs.governance_profile || vars.GOVERNANCE_PROFILE || 'solo' }}
+          EXPECTED_REVIEW_COUNT_OVERRIDE: ${{ github.event.inputs.required_approving_review_count || '' }}
         with:
           script: |
             const owner = context.repo.owner;
@@ -89,7 +119,8 @@ jobs:
               "",
               `- Time (UTC): ${timestamp}`,
               `- Workflow run: ${runUrl}`,
-              `- Expected required approving reviews: ${process.env.EXPECTED_REVIEW_COUNT ?? "0"}`,
+              `- Expected governance profile: ${process.env.EXPECTED_GOVERNANCE_PROFILE ?? "solo"}`,
+              `- Required review override: ${process.env.EXPECTED_REVIEW_COUNT_OVERRIDE || "none"}`,
               `- Policy check outcome: ${process.env.POLICY_OUTCOME ?? "unknown"}`,
               `- API docs parity outcome: ${process.env.API_DOCS_OUTCOME ?? "unknown"}`,
               "",

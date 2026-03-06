@@ -3,10 +3,10 @@ set -euo pipefail
 
 REPO="${1:-900Labs/900Invoice}"
 BRANCH="${2:-main}"
-REQUIRED_APPROVING_REVIEW_COUNT="${REQUIRED_APPROVING_REVIEW_COUNT:-0}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/governance-profile-env.sh"
 
-if [[ ! "$REQUIRED_APPROVING_REVIEW_COUNT" =~ ^[0-9]+$ ]]; then
-  echo "ERROR: REQUIRED_APPROVING_REVIEW_COUNT must be a non-negative integer." >&2
+if ! governance_profile_resolve; then
   exit 1
 fi
 
@@ -17,10 +17,14 @@ gh api -X PATCH "repos/${REPO}" \
   -f allow_rebase_merge=false \
   -f delete_branch_on_merge=true >/dev/null
 echo "Merge policy applied: squash-only + auto-delete merged branches."
+echo "Resolved governance profile: ${GOVERNANCE_PROFILE} (reviews=${REQUIRED_APPROVING_REVIEW_COUNT}, code_owner=${REQUIRE_CODE_OWNER_REVIEWS}, last_push_approval=${REQUIRE_LAST_PUSH_APPROVAL})"
 
 echo "Applying branch protection for ${REPO}:${BRANCH}..."
 set +e
-payload="$(jq -n --argjson review_count "$REQUIRED_APPROVING_REVIEW_COUNT" '{
+payload="$(jq -n \
+  --argjson review_count "$REQUIRED_APPROVING_REVIEW_COUNT" \
+  --argjson code_owner "$REQUIRE_CODE_OWNER_REVIEWS" \
+  --argjson last_push "$REQUIRE_LAST_PUSH_APPROVAL" '{
   required_status_checks: {
     strict: true,
     contexts: ["Quality Gate"]
@@ -28,7 +32,8 @@ payload="$(jq -n --argjson review_count "$REQUIRED_APPROVING_REVIEW_COUNT" '{
   enforce_admins: true,
   required_pull_request_reviews: {
     dismiss_stale_reviews: true,
-    require_code_owner_reviews: false,
+    require_code_owner_reviews: $code_owner,
+    require_last_push_approval: $last_push,
     required_approving_review_count: $review_count
   },
   restrictions: null,
