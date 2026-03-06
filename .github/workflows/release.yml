@@ -88,8 +88,42 @@ jobs:
           echo "Governance checklist diff base: ${base_ref}"
 
       - name: Verify governance sprint checklist reference
+        id: gov_check
         shell: bash
-        run: ./scripts/verify-governance-sprint-checklist.sh "${{ steps.gov_base.outputs.base_ref }}" "HEAD"
+        run: |
+          mkdir -p .tmp
+          REPORT_PATH=".tmp/release-governance-diff-context.txt" \
+            ./scripts/verify-governance-sprint-checklist.sh "${{ steps.gov_base.outputs.base_ref }}" "HEAD"
+
+      - name: Publish governance diff trace summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Release Governance Diff Trace"
+            echo ""
+            echo "- Diff base: \`${{ steps.gov_base.outputs.base_ref }}\`"
+            echo "- Head: \`HEAD\`"
+            echo "- Enforcement outcome: \`${{ steps.gov_check.outcome }}\`"
+            echo ""
+            echo "### Context"
+            echo ""
+            if [[ -f ".tmp/release-governance-diff-context.txt" ]]; then
+              echo '```text'
+              cat .tmp/release-governance-diff-context.txt
+              echo '```'
+            else
+              echo "_No governance diff context file was generated._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload governance diff context artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-governance-diff-context-${{ steps.meta.outputs.tag }}
+          path: .tmp/release-governance-diff-context.txt
+          if-no-files-found: warn
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

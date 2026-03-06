@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `docs/MAINTAINER_CHECKLIST.md` with governance profile selection and policy verification handoff checklist.
 - Added governance sprint-checklist enforcement script and CI check for governance-impacting PRs.
 - Added release-gate enforcement parity for governance sprint checklist verification.
+- Added release-gate governance diff trace artifact (`release-governance-diff-context-<tag>`) and workflow summary output.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
@@ -59,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated contributor/sprint/release/governance docs to reference the maintainer checklist workflow.
 - Updated PR template to include maintainer governance checklist confirmation for governance-impacting changes.
 - Updated release runbook and release workflow to enforce governance checklist verification before release builds.
+- Updated governance checklist script with optional report output for release-trace generation.
 
 ### Fixed
 
