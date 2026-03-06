@@ -101,6 +101,7 @@ Release workflow governance verification defaults to `solo` unless repository va
 3. `REQUIRE_CODE_OWNER_REVIEWS` (optional override)
 4. `REQUIRE_LAST_PUSH_APPROVAL` (optional override)
 5. `STRICT_SPRINT_DOC_REFERENCE` (`0`/`1`; when `1`, all changed sprint docs must reference `docs/MAINTAINER_CHECKLIST.md`)
+6. `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`; default `30` for governance diff context artifact retention)
 
 ---
 

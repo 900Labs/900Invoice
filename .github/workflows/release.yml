@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       CARGO_TARGET_DIR: /tmp/900invoice-target
+      GOVERNANCE_ARTIFACT_RETENTION_DAYS: ${{ vars.GOVERNANCE_ARTIFACT_RETENTION_DAYS || '30' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -98,6 +99,19 @@ jobs:
           REPORT_JSON_PATH=".tmp/release-governance-diff-context.json" \
             ./scripts/verify-governance-sprint-checklist.sh "${{ steps.gov_base.outputs.base_ref }}" "HEAD"
 
+      - name: Validate governance artifact retention policy
+        shell: bash
+        run: |
+          if [[ ! "${GOVERNANCE_ARTIFACT_RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: GOVERNANCE_ARTIFACT_RETENTION_DAYS must be an integer." >&2
+            exit 1
+          fi
+          if (( GOVERNANCE_ARTIFACT_RETENTION_DAYS < 1 || GOVERNANCE_ARTIFACT_RETENTION_DAYS > 90 )); then
+            echo "ERROR: GOVERNANCE_ARTIFACT_RETENTION_DAYS must be between 1 and 90." >&2
+            exit 1
+          fi
+          echo "Governance artifact retention days: ${GOVERNANCE_ARTIFACT_RETENTION_DAYS}"
+
       - name: Validate governance trace JSON schema
         run: ./scripts/verify-governance-trace-json.sh .tmp/release-governance-diff-context.json
 
@@ -130,6 +144,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-governance-diff-context-${{ steps.meta.outputs.tag }}
+          retention-days: ${{ env.GOVERNANCE_ARTIFACT_RETENTION_DAYS }}
           path: |
             .tmp/release-governance-diff-context.txt
             .tmp/release-governance-diff-context.json
