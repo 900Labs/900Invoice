@@ -12,6 +12,7 @@ Automated in GitHub Actions (`.github/workflows/release.yml`):
 2. Build a source tarball from the tagged commit.
 3. Generate SHA-256 checksum file.
 4. Publish artifacts to a GitHub Release for version tags (`v*`).
+5. Enforce governance sprint-checklist parity against release diff scope.
 
 Not yet automated:
 
@@ -31,15 +32,17 @@ Use `docs/MAINTAINER_CHECKLIST.md` for maintainer governance/profile verificatio
    - `./scripts/verify-repo-policy.sh 900Labs/900Invoice main`
    - (`STRICT=1` is default and required for releases)
    - If using non-`solo` governance, set matching profile env vars (for example `GOVERNANCE_PROFILE=small-team`).
-3. Run local quality gate:
+3. Verify governance sprint checklist parity (same rule enforced in CI + release gate):
+   - `./scripts/verify-governance-sprint-checklist.sh origin/main HEAD`
+4. Run local quality gate:
    - `./scripts/verify-api-doc-commands.sh`
    - `npm install`
    - `npm run check`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo check --manifest-path src-tauri/Cargo.toml`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings`
-4. Confirm changelog and sprint documentation are updated.
-5. Confirm the target version is reflected in release notes/changelog.
+5. Confirm changelog and sprint documentation are updated.
+6. Confirm the target version is reflected in release notes/changelog.
 
 ---
 
