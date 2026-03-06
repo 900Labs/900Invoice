@@ -39,6 +39,11 @@ Maintainer reference: use `docs/MAINTAINER_CHECKLIST.md` for governance profile 
    - Suggested path: `docs/sprints/sprint-XXX-<slug>.md`
    - Include scope, goals, deliverables, validation, and follow-ups.
    - For governance-impacting sprints, include a reference to `docs/MAINTAINER_CHECKLIST.md`.
+   - For governance-impacting sprints, include a checklist completion block in the sprint doc:
+     - `<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->`
+     - at least three checked items formatted as `- [x] ...`
+     - no unchecked items (`- [ ]`) inside the block
+     - `<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->`
 2. A complete PR description:
    - Summary
    - Problem statement

@@ -61,8 +61,19 @@ Checklist before squash merge:
 - [ ] PR title/body clearly describe scope, validation, and risks.
 - [ ] CI `Quality Gate` passed.
 - [ ] Documentation updated with behavior/process changes.
+- [ ] Governance-impacting sprint docs include `MAINTAINER_CHECKLIST_COMPLETION` block markers with checked items only.
 - [ ] PR merged with **Squash and merge**.
 - [ ] Merged PR URL and commit SHA shared with stakeholders.
+
+Sprint-doc checklist completion block template:
+
+```md
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Governance profile/override expectations were reviewed for this sprint.
+- [x] Policy verification and quality-gate evidence were captured in Validation.
+- [x] Documentation and sprint records were updated for maintainer handoff.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->
+```
 
 ---
 

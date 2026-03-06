@@ -12,6 +12,9 @@ governance_files=()
 sprint_docs=()
 checklist_ref_docs=()
 missing_checklist_ref_docs=()
+checklist_completion_block_docs=()
+missing_checklist_completion_block_docs=()
+incomplete_checklist_completion_block_docs=()
 RESULT="unknown"
 REASON="script execution did not complete"
 TIMESTAMP_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -45,12 +48,15 @@ EOF
     return 0
   fi
 
-  local changed_json governance_json sprint_docs_json checklist_json missing_json
+  local changed_json governance_json sprint_docs_json checklist_json missing_json completion_json completion_missing_json completion_incomplete_json
   changed_json="$(array_to_json "${changed_list[@]}")"
   governance_json="$(array_to_json "${governance_files[@]}")"
   sprint_docs_json="$(array_to_json "${sprint_docs[@]}")"
   checklist_json="$(array_to_json "${checklist_ref_docs[@]}")"
   missing_json="$(array_to_json "${missing_checklist_ref_docs[@]}")"
+  completion_json="$(array_to_json "${checklist_completion_block_docs[@]}")"
+  completion_missing_json="$(array_to_json "${missing_checklist_completion_block_docs[@]}")"
+  completion_incomplete_json="$(array_to_json "${incomplete_checklist_completion_block_docs[@]}")"
 
   jq -n \
     --arg timestamp_utc "$TIMESTAMP_UTC" \
@@ -64,6 +70,9 @@ EOF
     --argjson evaluated_sprint_docs "$sprint_docs_json" \
     --argjson sprint_docs_with_checklist_reference "$checklist_json" \
     --argjson sprint_docs_missing_checklist_reference "$missing_json" \
+    --argjson sprint_docs_with_checklist_completion_block "$completion_json" \
+    --argjson sprint_docs_missing_checklist_completion_block "$completion_missing_json" \
+    --argjson sprint_docs_incomplete_checklist_completion_block "$completion_incomplete_json" \
     '{
       timestamp_utc: $timestamp_utc,
       base_ref: $base_ref,
@@ -74,6 +83,9 @@ EOF
       evaluated_sprint_docs: $evaluated_sprint_docs,
       sprint_docs_with_checklist_reference: $sprint_docs_with_checklist_reference,
       sprint_docs_missing_checklist_reference: $sprint_docs_missing_checklist_reference,
+      sprint_docs_with_checklist_completion_block: $sprint_docs_with_checklist_completion_block,
+      sprint_docs_missing_checklist_completion_block: $sprint_docs_missing_checklist_completion_block,
+      sprint_docs_incomplete_checklist_completion_block: $sprint_docs_incomplete_checklist_completion_block,
       result: $result,
       reason: $reason
     }' > "$REPORT_JSON_PATH"
@@ -198,6 +210,45 @@ done
 write_report_list "sprint_docs_with_checklist_reference" "${checklist_ref_docs[@]-}"
 write_report_list "sprint_docs_missing_checklist_reference" "${missing_checklist_ref_docs[@]-}"
 
+checklist_completion_block_status() {
+  local file="$1"
+  awk '
+    /<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->/ {begin=1; in_block=1; next}
+    /<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->/ {if (in_block == 1) {end=1; in_block=0}; next}
+    in_block == 1 {
+      if ($0 ~ /^- \[[xX]\] /) checked++
+      if ($0 ~ /^- \[[[:space:]]\] /) unchecked++
+    }
+    END {
+      if (begin != 1 || end != 1) {
+        print "missing"
+        exit
+      }
+      if (checked < 3 || unchecked > 0) {
+        print "incomplete"
+        exit
+      }
+      print "valid"
+    }
+  ' "$file"
+}
+
+for sprint_doc in "${sprint_docs[@]}"; do
+  completion_status="$(checklist_completion_block_status "$sprint_doc")"
+  case "$completion_status" in
+    valid) checklist_completion_block_docs+=("$sprint_doc") ;;
+    missing) missing_checklist_completion_block_docs+=("$sprint_doc") ;;
+    incomplete) incomplete_checklist_completion_block_docs+=("$sprint_doc") ;;
+    *)
+      incomplete_checklist_completion_block_docs+=("$sprint_doc")
+      ;;
+  esac
+done
+
+write_report_list "sprint_docs_with_checklist_completion_block" "${checklist_completion_block_docs[@]-}"
+write_report_list "sprint_docs_missing_checklist_completion_block" "${missing_checklist_completion_block_docs[@]-}"
+write_report_list "sprint_docs_incomplete_checklist_completion_block" "${incomplete_checklist_completion_block_docs[@]-}"
+
 if [[ "$STRICT_SPRINT_DOC_REFERENCE_BOOL" == "true" && "${#missing_checklist_ref_docs[@]}" -gt 0 ]]; then
   RESULT="fail"
   REASON="strict mode requires checklist reference in all changed sprint docs"
@@ -206,6 +257,37 @@ if [[ "$STRICT_SPRINT_DOC_REFERENCE_BOOL" == "true" && "${#missing_checklist_ref
   echo "ERROR: STRICT_SPRINT_DOC_REFERENCE=true and not all changed sprint docs reference docs/MAINTAINER_CHECKLIST.md." >&2
   echo "Missing reference:" >&2
   for sprint_doc in "${missing_checklist_ref_docs[@]}"; do
+    echo "  - ${sprint_doc}" >&2
+  done
+  exit 1
+fi
+
+if [[ "${#missing_checklist_completion_block_docs[@]}" -gt 0 ]]; then
+  RESULT="fail"
+  REASON="changed sprint docs must include checklist completion block markers"
+  write_report_line "result: fail"
+  write_report_line "reason: changed sprint docs must include checklist completion block markers"
+  echo "ERROR: Changed sprint docs must include checklist completion block markers:" >&2
+  echo "  <!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->" >&2
+  echo "  - [x] ..." >&2
+  echo "  - [x] ..." >&2
+  echo "  - [x] ..." >&2
+  echo "  <!-- MAINTAINER_CHECKLIST_COMPLETION:END -->" >&2
+  echo "Missing block in:" >&2
+  for sprint_doc in "${missing_checklist_completion_block_docs[@]}"; do
+    echo "  - ${sprint_doc}" >&2
+  done
+  exit 1
+fi
+
+if [[ "${#incomplete_checklist_completion_block_docs[@]}" -gt 0 ]]; then
+  RESULT="fail"
+  REASON="checklist completion block must include at least three checked items and no unchecked items"
+  write_report_line "result: fail"
+  write_report_line "reason: checklist completion block must include at least three checked items and no unchecked items"
+  echo "ERROR: Checklist completion block must include at least three '- [x]' items and no unchecked '- [ ]' items." >&2
+  echo "Incomplete block in:" >&2
+  for sprint_doc in "${incomplete_checklist_completion_block_docs[@]}"; do
     echo "  - ${sprint_doc}" >&2
   done
   exit 1
