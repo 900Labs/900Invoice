@@ -48,3 +48,21 @@ If the workflow fails:
 2. Compare actual settings vs `docs/BRANCH_PROTECTION.md`.
 3. Re-apply target policy with `./scripts/apply-repo-policy.sh 900Labs/900Invoice main`.
 4. Re-run the workflow manually to confirm resolution.
+
+## Incident Routing
+
+The workflow automatically routes failures to GitHub Issues:
+
+1. It creates or updates an open issue titled:
+   - `Governance audit failure: policy drift detected`
+2. It uses labels:
+   - `governance-audit`
+   - `incident`
+   - `automation`
+3. If an incident issue already exists, it appends a comment with:
+   - workflow run URL
+   - check outcomes
+   - expected review-count setting
+   - remediation checklist
+
+This keeps governance failures visible even when maintainers are not actively monitoring Actions runs.

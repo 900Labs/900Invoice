@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added release runbook at `docs/RELEASE.md`.
 - Added branch protection policy runbook at `docs/BRANCH_PROTECTION.md`.
 - Added governance-audit runbook at `docs/GOVERNANCE_AUDIT.md`.
+- Added automated governance incident issue routing on governance-audit workflow failures.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
