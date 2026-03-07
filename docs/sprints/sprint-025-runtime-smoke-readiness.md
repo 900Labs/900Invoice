@@ -75,3 +75,13 @@ Quality and governance automation were already hardened, but maintainers still n
 
 1. Optionally add a CI workflow job that runs baseline runtime smoke on release candidates.
 2. Optionally add Windows/macOS-specific smoke command snippets to the runbook.
+
+## Maintainer Checklist Reference
+
+This sprint follows and references: `docs/MAINTAINER_CHECKLIST.md`.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Governance profile/override expectations were reviewed for this sprint.
+- [x] Policy verification and quality-gate evidence were captured in Validation.
+- [x] Documentation and sprint records were updated for maintainer handoff.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->
