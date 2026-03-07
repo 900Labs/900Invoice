@@ -40,6 +40,15 @@ REPORT_JSON_PATH=/tmp/ci-governance-diff-context.json ./scripts/verify-governanc
 ./scripts/verify-governance-trace-json.sh /tmp/ci-governance-diff-context.json
 ```
 
+For runtime/release-readiness verification, run:
+
+```bash
+INSTALL_NODE_DEPS=1 SMOKE_PROFILE=baseline LEGACY_HARDWARE=1 ./scripts/verify-runtime-smoke.sh
+INSTALL_NODE_DEPS=1 SMOKE_PROFILE=full ./scripts/verify-runtime-smoke.sh
+```
+
+Reference: `docs/RUNTIME_SMOKE.md`.
+
 ---
 
 ## CI Enforcement
