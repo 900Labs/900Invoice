@@ -32,7 +32,10 @@ Checklist:
   - `REQUIRE_CODE_OWNER_REVIEWS`
   - `REQUIRE_LAST_PUSH_APPROVAL`
   - `STRICT_SPRINT_DOC_REFERENCE` (`0`/`1` for governance sprint-doc enforcement strictness)
-  - `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, default `30` for governance artifacts)
+  - `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, default `30` shared governance-artifact retention)
+  - `GOVERNANCE_AUDIT_ARTIFACT_RETENTION_DAYS` (`1`-`90`, optional governance-audit override)
+  - `RELEASE_GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, optional release-workflow override)
+  - `GOVERNANCE_INVENTORY_ARTIFACT_RETENTION_DAYS` (`1`-`90`, optional inventory-report override)
   - `GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS` (`1`-`6`, default `3`)
   - `GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS` (`1`-`30`, default `2`)
 

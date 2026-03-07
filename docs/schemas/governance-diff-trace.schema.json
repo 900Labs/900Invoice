@@ -2,65 +2,93 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/900Labs/900Invoice/docs/schemas/governance-diff-trace.schema.json",
   "title": "Governance Diff Trace",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "timestamp_utc",
-    "base_ref",
-    "head_ref",
-    "strict_sprint_doc_reference",
-    "changed_files",
-    "governance_changed_files",
-    "evaluated_sprint_docs",
-    "sprint_docs_with_checklist_reference",
-    "sprint_docs_missing_checklist_reference",
-    "sprint_docs_with_checklist_completion_block",
-    "sprint_docs_missing_checklist_completion_block",
-    "sprint_docs_incomplete_checklist_completion_block",
-    "result",
-    "reason"
+  "description": "Versioned schema for governance diff trace payloads. Supports legacy 1.0.0 payloads and current 1.1.0 payloads.",
+  "oneOf": [
+    { "$ref": "#/$defs/v1_0_0" },
+    { "$ref": "#/$defs/v1_1_0" }
   ],
-  "properties": {
-    "timestamp_utc": { "type": "string", "minLength": 1 },
-    "base_ref": { "type": "string", "minLength": 1 },
-    "head_ref": { "type": "string", "minLength": 1 },
-    "strict_sprint_doc_reference": { "type": "boolean" },
-    "changed_files": {
+  "$defs": {
+    "string_array": {
       "type": "array",
       "items": { "type": "string" }
     },
-    "governance_changed_files": {
-      "type": "array",
-      "items": { "type": "string" }
+    "common_properties": {
+      "type": "object",
+      "properties": {
+        "timestamp_utc": { "type": "string", "minLength": 1 },
+        "base_ref": { "type": "string", "minLength": 1 },
+        "head_ref": { "type": "string", "minLength": 1 },
+        "strict_sprint_doc_reference": { "type": "boolean" },
+        "changed_files": { "$ref": "#/$defs/string_array" },
+        "governance_changed_files": { "$ref": "#/$defs/string_array" },
+        "evaluated_sprint_docs": { "$ref": "#/$defs/string_array" },
+        "sprint_docs_with_checklist_reference": { "$ref": "#/$defs/string_array" },
+        "sprint_docs_missing_checklist_reference": { "$ref": "#/$defs/string_array" },
+        "sprint_docs_with_checklist_completion_block": { "$ref": "#/$defs/string_array" },
+        "sprint_docs_missing_checklist_completion_block": { "$ref": "#/$defs/string_array" },
+        "sprint_docs_incomplete_checklist_completion_block": { "$ref": "#/$defs/string_array" },
+        "result": { "type": "string", "enum": ["pass", "fail"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
     },
-    "evaluated_sprint_docs": {
-      "type": "array",
-      "items": { "type": "string" }
+    "v1_0_0": {
+      "allOf": [
+        { "$ref": "#/$defs/common_properties" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "timestamp_utc",
+            "base_ref",
+            "head_ref",
+            "strict_sprint_doc_reference",
+            "changed_files",
+            "governance_changed_files",
+            "evaluated_sprint_docs",
+            "sprint_docs_with_checklist_reference",
+            "sprint_docs_missing_checklist_reference",
+            "sprint_docs_with_checklist_completion_block",
+            "sprint_docs_missing_checklist_completion_block",
+            "sprint_docs_incomplete_checklist_completion_block",
+            "result",
+            "reason"
+          ],
+          "properties": {
+            "schema_version": { "type": "string", "const": "1.0.0" }
+          }
+        }
+      ]
     },
-    "sprint_docs_with_checklist_reference": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "sprint_docs_missing_checklist_reference": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "sprint_docs_with_checklist_completion_block": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "sprint_docs_missing_checklist_completion_block": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "sprint_docs_incomplete_checklist_completion_block": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "result": {
-      "type": "string",
-      "enum": ["pass", "fail"]
-    },
-    "reason": { "type": "string", "minLength": 1 }
+    "v1_1_0": {
+      "allOf": [
+        { "$ref": "#/$defs/common_properties" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "timestamp_utc",
+            "base_ref",
+            "head_ref",
+            "strict_sprint_doc_reference",
+            "changed_files",
+            "governance_changed_files",
+            "evaluated_sprint_docs",
+            "sprint_docs_with_checklist_reference",
+            "sprint_docs_missing_checklist_reference",
+            "sprint_docs_with_checklist_completion_block",
+            "sprint_docs_missing_checklist_completion_block",
+            "sprint_docs_incomplete_checklist_completion_block",
+            "sprint_docs_malformed_checklist_completion_block",
+            "result",
+            "reason"
+          ],
+          "properties": {
+            "schema_version": { "type": "string", "const": "1.1.0" },
+            "sprint_docs_malformed_checklist_completion_block": { "$ref": "#/$defs/string_array" }
+          }
+        }
+      ]
+    }
   }
 }

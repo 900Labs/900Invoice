@@ -24,7 +24,8 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       CARGO_TARGET_DIR: /tmp/900invoice-target
-      GOVERNANCE_ARTIFACT_RETENTION_DAYS: ${{ vars.GOVERNANCE_ARTIFACT_RETENTION_DAYS || '30' }}
+      GLOBAL_GOVERNANCE_ARTIFACT_RETENTION_DAYS: ${{ vars.GOVERNANCE_ARTIFACT_RETENTION_DAYS || '30' }}
+      RELEASE_GOVERNANCE_ARTIFACT_RETENTION_DAYS: ${{ vars.RELEASE_GOVERNANCE_ARTIFACT_RETENTION_DAYS || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,18 +100,27 @@ jobs:
           REPORT_JSON_PATH=".tmp/release-governance-diff-context.json" \
             ./scripts/verify-governance-sprint-checklist.sh "${{ steps.gov_base.outputs.base_ref }}" "HEAD"
 
-      - name: Validate governance artifact retention policy
+      - name: Resolve release governance artifact retention policy
+        id: retention
         shell: bash
         run: |
-          if [[ ! "${GOVERNANCE_ARTIFACT_RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
-            echo "ERROR: GOVERNANCE_ARTIFACT_RETENTION_DAYS must be an integer." >&2
+          retention_days="${RELEASE_GOVERNANCE_ARTIFACT_RETENTION_DAYS:-}"
+          retention_source="workflow-override"
+          if [[ -z "${retention_days}" ]]; then
+            retention_days="${GLOBAL_GOVERNANCE_ARTIFACT_RETENTION_DAYS}"
+            retention_source="global-default"
+          fi
+          if [[ ! "${retention_days}" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: release governance artifact retention days must be an integer." >&2
             exit 1
           fi
-          if (( GOVERNANCE_ARTIFACT_RETENTION_DAYS < 1 || GOVERNANCE_ARTIFACT_RETENTION_DAYS > 90 )); then
-            echo "ERROR: GOVERNANCE_ARTIFACT_RETENTION_DAYS must be between 1 and 90." >&2
+          if (( retention_days < 1 || retention_days > 90 )); then
+            echo "ERROR: release governance artifact retention days must be between 1 and 90." >&2
             exit 1
           fi
-          echo "Governance artifact retention days: ${GOVERNANCE_ARTIFACT_RETENTION_DAYS}"
+          echo "retention_days=${retention_days}" >> "$GITHUB_OUTPUT"
+          echo "retention_source=${retention_source}" >> "$GITHUB_OUTPUT"
+          echo "Release governance artifact retention days: ${retention_days} (${retention_source})"
 
       - name: Validate governance trace JSON schema
         run: ./scripts/verify-governance-trace-json.sh .tmp/release-governance-diff-context.json
@@ -125,6 +135,7 @@ jobs:
             echo "- Diff base: \`${{ steps.gov_base.outputs.base_ref }}\`"
             echo "- Head: \`HEAD\`"
             echo "- Enforcement outcome: \`${{ steps.gov_check.outcome }}\`"
+            echo "- Governance artifact retention days: \`${{ steps.retention.outputs.retention_days }}\` (\`${{ steps.retention.outputs.retention_source }}\`)"
             echo ""
             echo "### Context"
             echo ""
@@ -144,7 +155,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-governance-diff-context-${{ steps.meta.outputs.tag }}
-          retention-days: ${{ env.GOVERNANCE_ARTIFACT_RETENTION_DAYS }}
+          retention-days: ${{ steps.retention.outputs.retention_days }}
           path: |
             .tmp/release-governance-diff-context.txt
             .tmp/release-governance-diff-context.json
