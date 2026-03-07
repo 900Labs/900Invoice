@@ -1,0 +1,145 @@
+name: Governance Artifact Inventory
+
+on:
+  schedule:
+    - cron: "47 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: governance-artifact-inventory-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inventory:
+    name: Governance Artifact Inventory
+    runs-on: ubuntu-22.04
+    env:
+      GLOBAL_GOVERNANCE_ARTIFACT_RETENTION_DAYS: ${{ vars.GOVERNANCE_ARTIFACT_RETENTION_DAYS || '30' }}
+      GOVERNANCE_INVENTORY_ARTIFACT_RETENTION_DAYS: ${{ vars.GOVERNANCE_INVENTORY_ARTIFACT_RETENTION_DAYS || '' }}
+    steps:
+      - name: Resolve inventory artifact retention policy
+        id: retention
+        shell: bash
+        run: |
+          retention_days="${GOVERNANCE_INVENTORY_ARTIFACT_RETENTION_DAYS:-}"
+          retention_source="workflow-override"
+          if [[ -z "${retention_days}" ]]; then
+            retention_days="${GLOBAL_GOVERNANCE_ARTIFACT_RETENTION_DAYS}"
+            retention_source="global-default"
+          fi
+          if [[ ! "${retention_days}" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: inventory artifact retention days must be an integer." >&2
+            exit 1
+          fi
+          if (( retention_days < 1 || retention_days > 90 )); then
+            echo "ERROR: inventory artifact retention days must be between 1 and 90." >&2
+            exit 1
+          fi
+          echo "retention_days=${retention_days}" >> "$GITHUB_OUTPUT"
+          echo "retention_source=${retention_source}" >> "$GITHUB_OUTPUT"
+          echo "Inventory artifact retention days: ${retention_days} (${retention_source})"
+
+      - name: Build governance artifact inventory report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const prefixes = [
+              "governance-profile-assertion-",
+              "release-governance-diff-context-",
+              "governance-artifact-inventory-",
+            ];
+
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              { owner, repo, per_page: 100 },
+              (response) => response.data.artifacts
+            );
+
+            const governanceArtifacts = artifacts
+              .filter((artifact) => prefixes.some((prefix) => artifact.name.startsWith(prefix)))
+              .map((artifact) => ({
+                id: artifact.id,
+                name: artifact.name,
+                size_in_bytes: artifact.size_in_bytes,
+                expired: artifact.expired,
+                created_at: artifact.created_at,
+                updated_at: artifact.updated_at,
+                expires_at: artifact.expires_at,
+                archive_download_url: artifact.archive_download_url,
+                workflow_run: artifact.workflow_run,
+              }))
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            const now = Date.now();
+            const summary = {
+              generated_at_utc: new Date().toISOString(),
+              repository: `${owner}/${repo}`,
+              total_governance_artifacts: governanceArtifacts.length,
+              active_governance_artifacts: governanceArtifacts.filter((a) => !a.expired).length,
+              expired_governance_artifacts: governanceArtifacts.filter((a) => a.expired).length,
+              due_to_expire_within_7_days: governanceArtifacts.filter((artifact) => {
+                if (!artifact.expires_at || artifact.expired) return false;
+                const expirationMs = new Date(artifact.expires_at).getTime();
+                return expirationMs >= now && expirationMs <= now + 7 * 24 * 60 * 60 * 1000;
+              }).length,
+              artifacts: governanceArtifacts,
+            };
+
+            const preview = governanceArtifacts.slice(0, 50);
+            const lines = [];
+            lines.push("# Governance Artifact Inventory");
+            lines.push("");
+            lines.push(`- Generated (UTC): ${summary.generated_at_utc}`);
+            lines.push(`- Repository: ${summary.repository}`);
+            lines.push(`- Total governance artifacts: ${summary.total_governance_artifacts}`);
+            lines.push(`- Active: ${summary.active_governance_artifacts}`);
+            lines.push(`- Expired: ${summary.expired_governance_artifacts}`);
+            lines.push(`- Expires within 7 days: ${summary.due_to_expire_within_7_days}`);
+            lines.push("");
+            lines.push("## Most Recent 50 Artifacts");
+            lines.push("");
+            lines.push("| Name | Created (UTC) | Expires (UTC) | Size (bytes) | Expired | Run ID |");
+            lines.push("| --- | --- | --- | ---: | --- | --- |");
+            for (const artifact of preview) {
+              lines.push(
+                `| ${artifact.name} | ${artifact.created_at ?? "n/a"} | ${artifact.expires_at ?? "n/a"} | ${artifact.size_in_bytes ?? 0} | ${artifact.expired ? "yes" : "no"} | ${artifact.workflow_run?.id ?? "n/a"} |`
+              );
+            }
+            if (preview.length === 0) {
+              lines.push("| (none) | n/a | n/a | 0 | n/a | n/a |");
+            }
+
+            fs.mkdirSync(path.join(process.cwd(), ".tmp"), { recursive: true });
+            fs.writeFileSync(path.join(process.cwd(), ".tmp", "governance-artifact-inventory.json"), JSON.stringify(summary, null, 2));
+            fs.writeFileSync(path.join(process.cwd(), ".tmp", "governance-artifact-inventory.md"), lines.join("\n") + "\n");
+
+      - name: Publish governance artifact inventory summary
+        shell: bash
+        run: |
+          {
+            echo "## Governance Artifact Inventory"
+            echo ""
+            echo "- Retention policy for this report: \`${{ steps.retention.outputs.retention_days }}\` days (\`${{ steps.retention.outputs.retention_source }}\`)"
+            echo ""
+            cat .tmp/governance-artifact-inventory.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload governance artifact inventory report
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-artifact-inventory-${{ github.run_id }}
+          retention-days: ${{ steps.retention.outputs.retention_days }}
+          path: |
+            .tmp/governance-artifact-inventory.md
+            .tmp/governance-artifact-inventory.json
+          if-no-files-found: error

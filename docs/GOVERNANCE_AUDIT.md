@@ -10,6 +10,14 @@ This document defines the automated governance drift audit for repository settin
   - Weekly schedule: Monday at `03:17 UTC`
   - Manual: `workflow_dispatch`
 
+Artifact inventory reporting:
+
+- File: `.github/workflows/governance-artifact-inventory.yml`
+- Name: `Governance Artifact Inventory`
+- Triggers:
+  - Weekly schedule: Monday at `03:47 UTC`
+  - Manual: `workflow_dispatch`
+
 ## What It Verifies
 
 1. Repository and branch-protection policy through:
@@ -40,9 +48,10 @@ Recommended:
    - `GOVERNANCE_INCIDENT_WEBHOOK_URL` (endpoint for chat/email/webhook gateway notifications)
    - `GOVERNANCE_INCIDENT_WEBHOOK_TOKEN` (optional bearer token sent as `Authorization: Bearer <token>`)
    - `GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET` (optional HMAC secret for signed webhook delivery)
-5. Optional governance artifact retention variable:
-   - `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, default `30`)
-   - controls retention for governance-audit artifacts uploaded by the workflow
+5. Optional governance artifact retention variables:
+   - shared default: `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`, default `30`)
+   - governance-audit override: `GOVERNANCE_AUDIT_ARTIFACT_RETENTION_DAYS` (`1`-`90`)
+   - inventory-report override: `GOVERNANCE_INVENTORY_ARTIFACT_RETENTION_DAYS` (`1`-`90`)
 6. Optional external notification retry variables:
    - `GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS` (`1`-`6`, default `3`)
    - `GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS` (`1`-`30`, default `2`)
@@ -132,8 +141,30 @@ Each run uploads one artifact:
    - input and repository-variable override values
    - UTC timestamp
 4. Retention:
-   - configured by `GOVERNANCE_ARTIFACT_RETENTION_DAYS`
+   - uses `GOVERNANCE_AUDIT_ARTIFACT_RETENTION_DAYS` when set
+   - otherwise falls back to `GOVERNANCE_ARTIFACT_RETENTION_DAYS`
    - workflow enforces valid range `1` to `90`
+
+## Governance Artifact Inventory Report
+
+The inventory workflow builds a periodic snapshot of governance artifacts for retention-policy audits.
+
+Outputs:
+
+1. Artifact: `governance-artifact-inventory-<run_id>`
+2. Files:
+   - `governance-artifact-inventory.md`
+   - `governance-artifact-inventory.json`
+3. Contents:
+   - total/active/expired governance artifact counts
+   - near-expiration counts (next 7 days)
+   - most recent governance artifacts with created/expires metadata
+
+Retention policy:
+
+1. Uses `GOVERNANCE_INVENTORY_ARTIFACT_RETENTION_DAYS` when set.
+2. Otherwise falls back to `GOVERNANCE_ARTIFACT_RETENTION_DAYS`.
+3. Enforced range remains `1` to `90`.
 
 Use this artifact during incident triage to confirm what policy contract the workflow actually evaluated.
 

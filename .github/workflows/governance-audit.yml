@@ -30,7 +30,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     env:
-      GOVERNANCE_ARTIFACT_RETENTION_DAYS: ${{ vars.GOVERNANCE_ARTIFACT_RETENTION_DAYS || '30' }}
+      GLOBAL_GOVERNANCE_ARTIFACT_RETENTION_DAYS: ${{ vars.GOVERNANCE_ARTIFACT_RETENTION_DAYS || '30' }}
+      GOVERNANCE_AUDIT_ARTIFACT_RETENTION_DAYS: ${{ vars.GOVERNANCE_AUDIT_ARTIFACT_RETENTION_DAYS || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -109,27 +110,46 @@ jobs:
         id: api_docs_check
         run: ./scripts/verify-api-doc-commands.sh
 
-      - name: Validate governance artifact retention policy
+      - name: Resolve governance audit artifact retention policy
+        id: retention
         shell: bash
         run: |
-          if [[ ! "${GOVERNANCE_ARTIFACT_RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
-            echo "ERROR: GOVERNANCE_ARTIFACT_RETENTION_DAYS must be an integer." >&2
+          retention_days="${GOVERNANCE_AUDIT_ARTIFACT_RETENTION_DAYS:-}"
+          retention_source="workflow-override"
+          if [[ -z "${retention_days}" ]]; then
+            retention_days="${GLOBAL_GOVERNANCE_ARTIFACT_RETENTION_DAYS}"
+            retention_source="global-default"
+          fi
+          if [[ ! "${retention_days}" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: governance artifact retention days must be an integer." >&2
             exit 1
           fi
-          if (( GOVERNANCE_ARTIFACT_RETENTION_DAYS < 1 || GOVERNANCE_ARTIFACT_RETENTION_DAYS > 90 )); then
-            echo "ERROR: GOVERNANCE_ARTIFACT_RETENTION_DAYS must be between 1 and 90." >&2
+          if (( retention_days < 1 || retention_days > 90 )); then
+            echo "ERROR: governance artifact retention days must be between 1 and 90." >&2
             exit 1
           fi
-          echo "Governance artifact retention days: ${GOVERNANCE_ARTIFACT_RETENTION_DAYS}"
+          echo "retention_days=${retention_days}" >> "$GITHUB_OUTPUT"
+          echo "retention_source=${retention_source}" >> "$GITHUB_OUTPUT"
+          echo "Governance artifact retention days: ${retention_days} (${retention_source})"
 
       - name: Upload governance profile assertion
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: governance-profile-assertion-${{ github.run_id }}
-          retention-days: ${{ env.GOVERNANCE_ARTIFACT_RETENTION_DAYS }}
+          retention-days: ${{ steps.retention.outputs.retention_days }}
           path: .tmp/governance-profile-assertion.txt
           if-no-files-found: error
+
+      - name: Publish governance artifact retention summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Governance Artifact Retention"
+            echo ""
+            echo "- Governance profile assertion retention days: \`${{ steps.retention.outputs.retention_days }}\` (\`${{ steps.retention.outputs.retention_source }}\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Open or update governance incident issue
         id: incident_issue

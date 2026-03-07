@@ -71,6 +71,9 @@ Workflow outputs:
    - `release-governance-diff-context.json`
 4. Governance trace schema contract:
    - `docs/schemas/governance-diff-trace.schema.json`
+   - compatibility rules enforced by validator:
+     - accepts legacy `1.0.0` payloads (including payloads missing `schema_version`)
+     - accepts current `1.1.0` payloads
 
 Artifacts are uploaded to the workflow run and source bundle/checksum are attached to the GitHub Release.
 
@@ -81,6 +84,7 @@ The workflow summary also includes:
 3. Embedded governance diff context payload.
 4. Location of machine-readable JSON governance trace.
 5. Schema validation is enforced by `scripts/verify-governance-trace-json.sh`.
+6. Governance artifact retention days and source (`workflow-override` or `global-default`).
 
 ---
 
@@ -101,7 +105,8 @@ Release workflow governance verification defaults to `solo` unless repository va
 3. `REQUIRE_CODE_OWNER_REVIEWS` (optional override)
 4. `REQUIRE_LAST_PUSH_APPROVAL` (optional override)
 5. `STRICT_SPRINT_DOC_REFERENCE` (`0`/`1`; when `1`, all changed sprint docs must reference `docs/MAINTAINER_CHECKLIST.md`)
-6. `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`; default `30` for governance diff context artifact retention)
+6. `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`; shared default `30`)
+7. `RELEASE_GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`; optional release-workflow override)
 
 ---
 

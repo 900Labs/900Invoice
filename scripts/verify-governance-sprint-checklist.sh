@@ -6,6 +6,7 @@ HEAD_REF="${2:-HEAD}"
 REPORT_PATH="${REPORT_PATH:-}"
 REPORT_JSON_PATH="${REPORT_JSON_PATH:-}"
 STRICT_SPRINT_DOC_REFERENCE="${STRICT_SPRINT_DOC_REFERENCE:-0}"
+TRACE_SCHEMA_VERSION="1.1.0"
 
 changed_list=()
 governance_files=()
@@ -15,6 +16,7 @@ missing_checklist_ref_docs=()
 checklist_completion_block_docs=()
 missing_checklist_completion_block_docs=()
 incomplete_checklist_completion_block_docs=()
+malformed_checklist_completion_block_docs=()
 RESULT="unknown"
 REASON="script execution did not complete"
 TIMESTAMP_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -48,7 +50,7 @@ EOF
     return 0
   fi
 
-  local changed_json governance_json sprint_docs_json checklist_json missing_json completion_json completion_missing_json completion_incomplete_json
+  local changed_json governance_json sprint_docs_json checklist_json missing_json completion_json completion_missing_json completion_incomplete_json completion_malformed_json
   changed_json="$(array_to_json "${changed_list[@]}")"
   governance_json="$(array_to_json "${governance_files[@]}")"
   sprint_docs_json="$(array_to_json "${sprint_docs[@]}")"
@@ -57,8 +59,10 @@ EOF
   completion_json="$(array_to_json "${checklist_completion_block_docs[@]}")"
   completion_missing_json="$(array_to_json "${missing_checklist_completion_block_docs[@]}")"
   completion_incomplete_json="$(array_to_json "${incomplete_checklist_completion_block_docs[@]}")"
+  completion_malformed_json="$(array_to_json "${malformed_checklist_completion_block_docs[@]}")"
 
   jq -n \
+    --arg schema_version "$TRACE_SCHEMA_VERSION" \
     --arg timestamp_utc "$TIMESTAMP_UTC" \
     --arg base_ref "$BASE_REF" \
     --arg head_ref "$HEAD_REF" \
@@ -73,7 +77,9 @@ EOF
     --argjson sprint_docs_with_checklist_completion_block "$completion_json" \
     --argjson sprint_docs_missing_checklist_completion_block "$completion_missing_json" \
     --argjson sprint_docs_incomplete_checklist_completion_block "$completion_incomplete_json" \
+    --argjson sprint_docs_malformed_checklist_completion_block "$completion_malformed_json" \
     '{
+      schema_version: $schema_version,
       timestamp_utc: $timestamp_utc,
       base_ref: $base_ref,
       head_ref: $head_ref,
@@ -86,6 +92,7 @@ EOF
       sprint_docs_with_checklist_completion_block: $sprint_docs_with_checklist_completion_block,
       sprint_docs_missing_checklist_completion_block: $sprint_docs_missing_checklist_completion_block,
       sprint_docs_incomplete_checklist_completion_block: $sprint_docs_incomplete_checklist_completion_block,
+      sprint_docs_malformed_checklist_completion_block: $sprint_docs_malformed_checklist_completion_block,
       result: $result,
       reason: $reason
     }' > "$REPORT_JSON_PATH"
@@ -126,6 +133,7 @@ write_report_line "timestamp_utc: ${TIMESTAMP_UTC}"
 write_report_line "base_ref: ${BASE_REF}"
 write_report_line "head_ref: ${HEAD_REF}"
 write_report_line "strict_sprint_doc_reference: ${STRICT_SPRINT_DOC_REFERENCE_BOOL}"
+write_report_line "schema_version: ${TRACE_SCHEMA_VERSION}"
 
 changed_files="$(git diff --name-only "${BASE_REF}...${HEAD_REF}")"
 
@@ -148,15 +156,21 @@ is_governance_file() {
   local path="$1"
   case "$path" in
     .github/pull_request_template.md) return 0 ;;
+    .github/workflows/ci.yml) return 0 ;;
+    .github/workflows/governance-artifact-inventory.yml) return 0 ;;
     .github/workflows/governance-audit.yml) return 0 ;;
     .github/workflows/release.yml) return 0 ;;
     scripts/apply-repo-policy.sh) return 0 ;;
+    scripts/verify-governance-sprint-checklist.sh) return 0 ;;
+    scripts/verify-governance-trace-json.sh) return 0 ;;
     scripts/verify-repo-policy.sh) return 0 ;;
     scripts/governance-profile-env.sh) return 0 ;;
     docs/BRANCH_PROTECTION.md) return 0 ;;
     docs/GOVERNANCE_AUDIT.md) return 0 ;;
     docs/MAINTAINER_CHECKLIST.md) return 0 ;;
+    docs/QUALITY_GATE.md) return 0 ;;
     docs/RELEASE.md) return 0 ;;
+    docs/schemas/governance-diff-trace.schema.json) return 0 ;;
     docs/SPRINT_PROCESS.md) return 0 ;;
     *) return 1 ;;
   esac
@@ -213,15 +227,29 @@ write_report_list "sprint_docs_missing_checklist_reference" "${missing_checklist
 checklist_completion_block_status() {
   local file="$1"
   awk '
-    /<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->/ {begin=1; in_block=1; next}
-    /<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->/ {if (in_block == 1) {end=1; in_block=0}; next}
+    /<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->/ {
+      begin_count++
+      if (in_block == 1) nested = 1
+      in_block = 1
+      next
+    }
+    /<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->/ {
+      end_count++
+      if (in_block == 0) unbalanced = 1
+      if (in_block == 1) in_block = 0
+      next
+    }
     in_block == 1 {
       if ($0 ~ /^- \[[xX]\] /) checked++
       if ($0 ~ /^- \[[[:space:]]\] /) unchecked++
     }
     END {
-      if (begin != 1 || end != 1) {
+      if (begin_count == 0 && end_count == 0) {
         print "missing"
+        exit
+      }
+      if (begin_count != 1 || end_count != 1 || nested == 1 || unbalanced == 1 || in_block == 1) {
+        print "malformed"
         exit
       }
       if (checked < 3 || unchecked > 0) {
@@ -238,6 +266,7 @@ for sprint_doc in "${sprint_docs[@]}"; do
   case "$completion_status" in
     valid) checklist_completion_block_docs+=("$sprint_doc") ;;
     missing) missing_checklist_completion_block_docs+=("$sprint_doc") ;;
+    malformed) malformed_checklist_completion_block_docs+=("$sprint_doc") ;;
     incomplete) incomplete_checklist_completion_block_docs+=("$sprint_doc") ;;
     *)
       incomplete_checklist_completion_block_docs+=("$sprint_doc")
@@ -247,6 +276,7 @@ done
 
 write_report_list "sprint_docs_with_checklist_completion_block" "${checklist_completion_block_docs[@]-}"
 write_report_list "sprint_docs_missing_checklist_completion_block" "${missing_checklist_completion_block_docs[@]-}"
+write_report_list "sprint_docs_malformed_checklist_completion_block" "${malformed_checklist_completion_block_docs[@]-}"
 write_report_list "sprint_docs_incomplete_checklist_completion_block" "${incomplete_checklist_completion_block_docs[@]-}"
 
 if [[ "$STRICT_SPRINT_DOC_REFERENCE_BOOL" == "true" && "${#missing_checklist_ref_docs[@]}" -gt 0 ]]; then
@@ -275,6 +305,19 @@ if [[ "${#missing_checklist_completion_block_docs[@]}" -gt 0 ]]; then
   echo "  <!-- MAINTAINER_CHECKLIST_COMPLETION:END -->" >&2
   echo "Missing block in:" >&2
   for sprint_doc in "${missing_checklist_completion_block_docs[@]}"; do
+    echo "  - ${sprint_doc}" >&2
+  done
+  exit 1
+fi
+
+if [[ "${#malformed_checklist_completion_block_docs[@]}" -gt 0 ]]; then
+  RESULT="fail"
+  REASON="checklist completion block markers must not be duplicated, nested, or unbalanced"
+  write_report_line "result: fail"
+  write_report_line "reason: checklist completion block markers must not be duplicated, nested, or unbalanced"
+  echo "ERROR: Checklist completion block markers are malformed (duplicate, nested, or unbalanced)." >&2
+  echo "Malformed block in:" >&2
+  for sprint_doc in "${malformed_checklist_completion_block_docs[@]}"; do
     echo "  - ${sprint_doc}" >&2
   done
   exit 1

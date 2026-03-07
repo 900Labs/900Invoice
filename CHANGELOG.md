@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added configurable governance artifact retention policy (`GOVERNANCE_ARTIFACT_RETENTION_DAYS`) for governance workflow artifacts.
 - Added governance webhook retry/backoff controls (`GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS`, `GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS`).
 - Added optional HMAC-signed governance webhook delivery using `GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET`.
+- Added governance artifact inventory workflow (`.github/workflows/governance-artifact-inventory.yml`) with scheduled/dispatch reporting outputs.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
@@ -70,12 +71,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated release runbook and release workflow to enforce governance checklist verification before release builds.
 - Updated governance checklist script with optional report output for release-trace generation.
 - Updated governance checklist enforcement with optional strict mode (`STRICT_SPRINT_DOC_REFERENCE`) for all changed sprint docs.
+- Updated governance checklist completion-block linting to fail on duplicate, nested, or unbalanced block markers.
 - Updated governance audit runbook and maintainer checklist with optional external incident webhook setup guidance.
 - Updated sprint and maintainer process docs with a stable `MAINTAINER_CHECKLIST_COMPLETION` sprint-doc block template.
 - Updated CI and release workflows to enforce governance trace JSON schema validation.
 - Updated quality/release runbooks with governance trace schema validation commands.
 - Updated governance/release/maintainer docs with governance artifact retention policy guidance.
 - Updated governance/maintainer docs with webhook retry/backoff and HMAC-signing guidance.
+- Updated governance trace schema and validator with explicit schema-version compatibility rules (`1.0.0` legacy, `1.1.0` current).
+- Updated governance workflows to support per-workflow artifact retention overrides (audit/release/inventory) with shared fallback.
 
 ### Fixed
 
