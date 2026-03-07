@@ -129,6 +129,9 @@ The application will open in a native window. Changes to Svelte files reload ins
 # Verify API docs command catalog parity
 ./scripts/verify-api-doc-commands.sh
 
+# Run runtime smoke checks (baseline)
+INSTALL_NODE_DEPS=1 SMOKE_PROFILE=baseline ./scripts/verify-runtime-smoke.sh
+
 # Run all Rust tests
 CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml
 

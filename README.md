@@ -195,6 +195,7 @@ Your data never leaves your machine unless you explicitly export it.
 - [Governance Audit](docs/GOVERNANCE_AUDIT.md) — scheduled drift detection for policy and docs parity
 - [Sprint Process](docs/SPRINT_PROCESS.md) — required sprint workflow and squash-merge policy
 - [Quality Gate](docs/QUALITY_GATE.md) — required pre-merge validation baseline
+- [Runtime Smoke Runbook](docs/RUNTIME_SMOKE.md) — release-readiness smoke verification, including legacy-hardware mode
 - [Sprint Records](docs/sprints/) — delivered sprint scope, validation, and decision history
 
 ## Contributing
