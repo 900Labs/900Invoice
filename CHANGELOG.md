@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
+- Added runtime smoke verification script (`scripts/verify-runtime-smoke.sh`) and runbook (`docs/RUNTIME_SMOKE.md`) with legacy-hardware mode for low-resource validation.
 
 ### Changed
 
@@ -80,11 +81,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated governance/maintainer docs with webhook retry/backoff and HMAC-signing guidance.
 - Updated governance trace schema and validator with explicit schema-version compatibility rules (`1.0.0` legacy, `1.1.0` current).
 - Updated governance workflows to support per-workflow artifact retention overrides (audit/release/inventory) with shared fallback.
+- Updated quality and contributor documentation to include runtime smoke evidence as part of release-readiness validation.
+- Updated frontend type-check command to use `svelte-check --workspace src --tsconfig ../tsconfig.json` for deterministic diagnostics in constrained environments.
+- Updated frontend tooling dependencies by pinning `@sveltejs/vite-plugin-svelte` to `6.0.0` and `@sveltejs/vite-plugin-svelte-inspector` to `5.0.0` for reproducible smoke/build behavior.
 
 ### Fixed
 
 - Removed invalid `app.title` key from `src-tauri/tauri.conf.json` to satisfy strict Tauri/Rust checks.
 - Removed `rg` dependency from repository-policy scripts to improve compatibility on minimal CI runners.
+- Repaired `src-tauri/icons/icon.png` to valid RGBA PNG content required by `tauri::generate_context!()` during Rust compile checks.
 
 ## [1.0.0] - 2026-03-05
 
