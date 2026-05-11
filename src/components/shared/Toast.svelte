@@ -1,17 +1,18 @@
 <script lang="ts">
+  import { t } from '../../stores/i18nStore';
   import { getToasts, dismissToast } from '../../stores/toastStore';
 
   let toasts = $derived(getToasts());
 </script>
 
-<div class="toast-container" role="region" aria-label="Notifications" aria-live="polite">
+<div class="toast-container" role="region" aria-label={t('common.notifications')} aria-live="polite">
   {#each toasts as toast (toast.id)}
     <div class="toast toast-{toast.type}" role="alert">
       <span class="toast-message">{toast.message}</span>
       <button
         class="toast-close"
         onclick={() => dismissToast(toast.id)}
-        aria-label="Dismiss"
+        aria-label={t('common.dismiss')}
       >✕</button>
     </div>
   {/each}

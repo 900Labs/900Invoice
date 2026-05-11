@@ -30,7 +30,7 @@
         <option value={c.code}>{c.code} — {c.name}</option>
       {/each}
     </select>
-    <p class="form-hint mt-xs">Used as the default currency for new invoices.</p>
+    <p class="form-hint mt-xs">{t('settings.defaultCurrencyHint')}</p>
   </div>
 
   <div class="form-group mt-md">

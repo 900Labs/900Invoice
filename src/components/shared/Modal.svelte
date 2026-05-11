@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from '../../stores/i18nStore';
+
   interface Props {
     title: string;
     maxWidth?: string;
@@ -28,7 +30,7 @@
     <div class="modal-header">
       <h2 class="modal-title">{title}</h2>
       {#if onclose}
-        <button class="btn btn-ghost btn-icon" onclick={onclose} aria-label="Close">✕</button>
+        <button class="btn btn-ghost btn-icon" onclick={onclose} aria-label={t('common.close')}>✕</button>
       {/if}
     </div>
     <div class="modal-body">

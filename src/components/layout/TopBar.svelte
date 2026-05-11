@@ -65,7 +65,7 @@
             </button>
           {/each}
         </div>
-        <button class="lang-overlay" onclick={() => showLangMenu = false} aria-label="Close"></button>
+        <button class="lang-overlay" onclick={() => showLangMenu = false} aria-label={t('common.close')}></button>
       {/if}
     </div>
   </div>

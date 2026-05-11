@@ -260,7 +260,7 @@
           <div class="import-export-item">
             <div>
               <p class="ie-title">{t('settings.importClients')}</p>
-              <p class="ie-desc">Import clients from a CSV file.</p>
+              <p class="ie-desc">{t('settings.importClientsDesc')}</p>
             </div>
             <button class="btn" onclick={handleImportClients}>
               ↑ {t('common.import')}
@@ -269,7 +269,7 @@
           <div class="import-export-item">
             <div>
               <p class="ie-title">{t('settings.exportClients')}</p>
-              <p class="ie-desc">Export all clients to CSV.</p>
+              <p class="ie-desc">{t('settings.exportClientsDesc')}</p>
             </div>
             <button class="btn" onclick={handleExportClients}>
               ↓ {t('common.export')}
@@ -278,7 +278,7 @@
           <div class="import-export-item">
             <div>
               <p class="ie-title">{t('settings.importProducts')}</p>
-              <p class="ie-desc">Import products and services from a CSV file.</p>
+              <p class="ie-desc">{t('settings.importProductsDesc')}</p>
             </div>
             <button class="btn" onclick={handleImportProducts}>
               ↑ {t('common.import')}
@@ -287,7 +287,7 @@
           <div class="import-export-item">
             <div>
               <p class="ie-title">{t('settings.exportProducts')}</p>
-              <p class="ie-desc">Export all products and services to CSV.</p>
+              <p class="ie-desc">{t('settings.exportProductsDesc')}</p>
             </div>
             <button class="btn" onclick={handleExportProducts}>
               ↓ {t('common.export')}
@@ -296,7 +296,7 @@
           <div class="import-export-item">
             <div>
               <p class="ie-title">{t('settings.exportInvoices')}</p>
-              <p class="ie-desc">Export all invoices to CSV.</p>
+              <p class="ie-desc">{t('settings.exportInvoicesDesc')}</p>
             </div>
             <button class="btn" onclick={handleExportInvoices}>
               ↓ {t('common.export')}
@@ -306,7 +306,7 @@
           <div class="import-export-item">
             <div>
               <p class="ie-title">{t('settings.backupDatabase')}</p>
-              <p class="ie-desc">Save a copy of the database.</p>
+              <p class="ie-desc">{t('settings.backupDatabaseDesc')}</p>
             </div>
             <button class="btn btn-primary" onclick={handleBackup}>
               {t('common.download')}
@@ -315,7 +315,7 @@
           <div class="import-export-item">
             <div>
               <p class="ie-title">{t('settings.restoreDatabase')}</p>
-              <p class="ie-desc">Restore from a backup file.</p>
+              <p class="ie-desc">{t('settings.restoreDatabaseDesc')}</p>
             </div>
             <button class="btn" style="border-color: var(--color-danger); color: var(--color-danger);" onclick={handleRestore}>
               {t('common.upload')}
