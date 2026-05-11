@@ -5,7 +5,7 @@
 The engine has three public surfaces:
 
 1. `generate_invoice_html(...)` builds the rich HTML invoice used for WebView preview and browser print workflows.
-2. `get_preview_data(...)` returns structured JSON for frontend preview components.
+2. `get_preview_data_with_locale(...)` returns structured JSON for frontend preview components.
 3. `generate_invoice_pdf_bytes(...)` builds a self-contained PDF document for native file export.
 
 The current PDF export path is dependency-free: it writes PDF objects directly from the invoice data and uses built-in PDF fonts. This keeps offline export available without shipping an external browser, PDF converter, or typesetting binary.
@@ -18,9 +18,10 @@ The current PDF export path is dependency-free: it writes PDF objects directly f
 2. The preview modal renders invoice data from the frontend store.
 3. Clicking **Download** opens a native save dialog.
 4. The frontend invokes `generate_invoice_pdf`.
-5. Rust loads the invoice with client, line items, tax rows, and payments.
-6. Rust returns base64-encoded PDF bytes.
-7. The frontend decodes the bytes and writes the selected `.pdf` file through the Tauri filesystem plugin.
+5. Rust loads the saved paper size, locale, and date-format settings.
+6. Rust loads the invoice with client, line items, tax rows, and payments.
+7. Rust returns base64-encoded PDF bytes.
+8. The frontend decodes the bytes and writes the selected `.pdf` file through the Tauri filesystem plugin.
 
 The **Print** button remains available and uses the WebView/browser print path.
 
@@ -34,13 +35,14 @@ The PDF renderer includes:
 |---|---|
 | Business name and contact details | `BusinessProfile` |
 | Invoice number, issue date, due date, status | `InvoiceWithDetails` |
+| Paper size, locale, and date format | `settings` |
 | Client name and contact details | `InvoiceWithDetails.client` |
 | Line item description, quantity, unit price, tax, and amount | `InvoiceWithDetails.line_items` |
 | Discounts, tax rows, total, paid amount, and balance | Invoice totals and `InvoiceWithDetails.taxes` |
 | Bank and mobile money payment details | `BusinessProfile` |
 | Notes, terms, and footer | Invoice text fields |
 
-Money is formatted from integer minor units. The native PDF uses ISO currency codes for maximum compatibility with built-in PDF fonts; the HTML preview can use richer currency symbols.
+Money is formatted from integer minor units. The native PDF uses the active locale for decimal and thousands separators, and ISO currency codes for maximum compatibility with built-in PDF fonts. The HTML renderer uses the same locale/date settings and can use richer currency symbols.
 
 ---
 
@@ -50,7 +52,7 @@ Invoice rendering is code-driven today. To customize the invoice design, update:
 
 - `generate_invoice_html(...)` for the WebView preview and print styling.
 - `generate_invoice_pdf_bytes(...)` and `PdfRenderer` for exported PDF layout.
-- `get_preview_data(...)` when the frontend needs additional structured fields.
+- `get_preview_data_with_locale(...)` when the frontend needs additional structured fields.
 
 Common changes:
 
@@ -60,7 +62,8 @@ Common changes:
 | Table columns | `PdfRenderer::columns`, `draw_table_header`, `draw_item_row`, and the HTML item table |
 | Business/payment fields | `draw_header`, `draw_payment_details`, and `build_payment_html` |
 | Notes/terms layout | `draw_text_section` and the HTML notes/terms blocks |
-| Paper size behavior | `generate_invoice_pdf_bytes` and `generate_invoice_html` paper-size branches |
+| Paper size behavior | `load_pdf_render_settings`, `generate_invoice_pdf_bytes`, and `generate_invoice_html` paper-size branches |
+| Locale/date formatting | `format_date_for_locale`, `format_currency_html_for_locale`, and `format_currency_pdf_for_locale` |
 
 ---
 

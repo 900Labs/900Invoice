@@ -8,7 +8,7 @@
 // reference material only and is not wired into the runtime PDF command.
 //
 // Data is passed as a JSON file (invoice-data.json) whose schema matches
-// the get_preview_data() output from pdf_engine.rs.
+// the get_preview_data_with_locale() output from pdf_engine.rs.
 //
 // Usage:
 //   typst compile invoice.typ output.pdf --input invoice-data-path=invoice-data.json

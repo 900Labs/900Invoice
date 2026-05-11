@@ -321,8 +321,8 @@ services::pdf_engine
   ├── generate_invoice_html(...)
   │     Live WebView preview and browser print source
   │
-  ├── get_preview_data(...)
-  │     Structured JSON for frontend preview components
+  ├── get_preview_data_with_locale(...)
+  │     Structured JSON for frontend preview components with render settings
   │
   ├── generate_invoice_pdf_bytes(...)
   │     Native PDF bytes for save/export
