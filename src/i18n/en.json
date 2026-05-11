@@ -163,6 +163,7 @@
     "thisYear": "This Year",
     "exportCsv": "Export CSV",
     "totalRevenue": "Total Revenue",
+    "revenueByClient": "Revenue by Client",
     "taxCollected": "Tax Collected",
     "current": "Current",
     "overdue30": "1-30 Days Overdue",

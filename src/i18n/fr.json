@@ -163,6 +163,7 @@
     "thisYear": "Cette année",
     "exportCsv": "Exporter CSV",
     "totalRevenue": "Chiffre d'affaires total",
+    "revenueByClient": "Revenus par client",
     "taxCollected": "Taxes collectées",
     "current": "En cours",
     "overdue30": "1-30 jours de retard",

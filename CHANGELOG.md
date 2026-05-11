@@ -59,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded JSON database backups and additive restore to include invoice line items, invoice tax rows, payments, recurring schedules, exchange rates, settings, business profile, tax rates, products, clients, invoices, and invoice sequences.
 - Corrected tax report base amounts by deriving each persisted tax line's taxable base from invoice line items when mapping invoice details.
 - Updated report CSV export to save through a native file dialog and export rows for the active revenue, tax, or aging report.
+- Added client-and-currency revenue breakdowns to Reports and aligned revenue CSV export with that aggregation.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.
 - Enabled recurring due processing on app startup and an hourly in-process worker for missed-job recovery while the app is open.

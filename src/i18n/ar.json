@@ -163,6 +163,7 @@
     "thisYear": "هذا العام",
     "exportCsv": "تصدير CSV",
     "totalRevenue": "إجمالي الإيرادات",
+    "revenueByClient": "الإيرادات حسب العميل",
     "taxCollected": "الضرائب المحصّلة",
     "current": "الحالية",
     "overdue30": "متأخر 1-30 يوماً",
