@@ -209,6 +209,8 @@
     "nextNumber": "अगला नंबर",
     "importClients": "ग्राहक आयात करें (CSV)",
     "exportClients": "ग्राहक निर्यात करें (CSV)",
+    "importProducts": "उत्पाद आयात करें (CSV)",
+    "exportProducts": "उत्पाद निर्यात करें (CSV)",
     "exportInvoices": "चालान निर्यात करें (CSV)",
     "backupDatabase": "डेटाबेस बैकअप",
     "restoreDatabase": "डेटाबेस पुनर्स्थापित करें",

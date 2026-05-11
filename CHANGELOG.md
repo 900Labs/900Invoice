@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected model-backed invoice tax summaries to apply each line item's stored tax rate instead of applying every active tax rate to the full invoice subtotal.
 - Pinned `esrap@2.2.2` because `esrap@2.2.3` was missing its exported TypeScript printer files and blocked Svelte validation/builds.
 - Wired Settings import/export actions to native file open/save dialogs for client CSV import/export, invoice CSV export, JSON backups, and JSON restore.
+- Added product CSV import/export from Settings, including inactive product rows and spreadsheet formula sanitization on export.
 - Expanded JSON database backups and additive restore to include invoice line items, invoice tax rows, payments, recurring schedules, exchange rates, settings, business profile, tax rates, products, clients, invoices, and invoice sequences.
 - Corrected tax report base amounts by deriving each persisted tax line's taxable base from invoice line items when mapping invoice details.
 - Updated report CSV export to save through a native file dialog and export rows for the active revenue, tax, or aging report.

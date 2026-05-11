@@ -4,7 +4,7 @@ use crate::models::exchange_rate::ExchangeRate;
 use crate::models::invoice::Invoice;
 use crate::models::line_item::LineItem;
 use crate::models::payment::Payment;
-use crate::models::product::Product;
+use crate::models::product::{CreateProduct, Product, UpdateProduct};
 use crate::models::recurring::RecurringInvoice;
 use crate::models::tax::{InvoiceTax, TaxRate};
 use rusqlite::Connection;
@@ -48,6 +48,55 @@ fn csv_escape(s: &str) -> String {
         format!("\"{}\"", sanitized.replace('"', "\"\""))
     } else {
         sanitized
+    }
+}
+
+fn currency_decimals(currency_code: &str) -> u32 {
+    match currency_code.to_ascii_uppercase().as_str() {
+        "UGX" | "XOF" | "XAF" => 0,
+        _ => 2,
+    }
+}
+
+fn currency_multiplier(currency_code: &str) -> i64 {
+    10_i64.pow(currency_decimals(currency_code))
+}
+
+fn parse_price_minor(value: &str, currency_code: &str) -> Result<i64, String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(0);
+    }
+
+    let parsed = trimmed
+        .parse::<f64>()
+        .map_err(|_| format!("invalid default_price '{}'", value))?;
+    if !parsed.is_finite() || parsed < 0.0 {
+        return Err(format!("invalid default_price '{}'", value));
+    }
+
+    Ok((parsed * currency_multiplier(currency_code) as f64).round() as i64)
+}
+
+fn format_price_major(amount_minor: i64, currency_code: &str) -> String {
+    let decimals = currency_decimals(currency_code);
+    let divisor = currency_multiplier(currency_code);
+    if decimals == 0 {
+        amount_minor.to_string()
+    } else {
+        format!(
+            "{:.*}",
+            decimals as usize,
+            amount_minor as f64 / divisor as f64
+        )
+    }
+}
+
+fn parse_bool_field(value: &str) -> Option<bool> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "true" | "1" | "yes" | "y" | "active" => Some(true),
+        "false" | "0" | "no" | "n" | "inactive" => Some(false),
+        _ => None,
     }
 }
 
@@ -245,6 +294,129 @@ fn list_invoice_sequences_for_backup(
         .map_err(|e| e.to_string())
 }
 
+fn import_products_csv_content(conn: &Connection, csv_content: &str) -> Result<Value, String> {
+    let mut lines = csv_content.lines();
+    let _header = lines.next();
+
+    let mut imported = 0usize;
+    let mut errors: Vec<String> = Vec::new();
+
+    for (i, line) in lines.enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        let fields = parse_csv_line(line);
+        let row = i + 2;
+        let name = fields.first().cloned().unwrap_or_default();
+        if name.is_empty() {
+            errors.push(format!("Row {}: missing name", row));
+            continue;
+        }
+
+        let default_currency = fields
+            .get(3)
+            .map(|s| s.trim().to_ascii_uppercase())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "USD".to_string());
+
+        let default_price_minor = match parse_price_minor(
+            fields.get(2).map(String::as_str).unwrap_or(""),
+            &default_currency,
+        ) {
+            Ok(amount) => amount,
+            Err(e) => {
+                errors.push(format!("Row {}: {}", row, e));
+                continue;
+            }
+        };
+
+        let default_tax_rate_bps = match fields.get(4).filter(|s| !s.trim().is_empty()) {
+            Some(value) => match value.trim().parse::<i32>() {
+                Ok(rate) if rate >= 0 => rate,
+                _ => {
+                    errors.push(format!(
+                        "Row {}: invalid default_tax_rate_bps '{}'",
+                        row, value
+                    ));
+                    continue;
+                }
+            },
+            None => 0,
+        };
+
+        let is_active = match fields.get(6).filter(|s| !s.trim().is_empty()) {
+            Some(value) => match parse_bool_field(value) {
+                Some(parsed) => parsed,
+                None => {
+                    errors.push(format!("Row {}: invalid is_active '{}'", row, value));
+                    continue;
+                }
+            },
+            None => true,
+        };
+
+        let product = CreateProduct {
+            name,
+            description: fields.get(1).cloned().filter(|s| !s.is_empty()),
+            default_price_minor: Some(default_price_minor),
+            default_currency: Some(default_currency),
+            default_tax_rate_bps: Some(default_tax_rate_bps),
+            unit: fields.get(5).cloned().filter(|s| !s.is_empty()),
+        };
+
+        match db::queries::products::insert(conn, &product) {
+            Ok(created) => {
+                if !is_active {
+                    let update = UpdateProduct {
+                        name: None,
+                        description: None,
+                        default_price_minor: None,
+                        default_currency: None,
+                        default_tax_rate_bps: None,
+                        unit: None,
+                        is_active: Some(false),
+                    };
+                    if let Err(e) = db::queries::products::update(conn, &created.id, &update) {
+                        errors.push(format!("Row {}: {}", row, e));
+                        continue;
+                    }
+                }
+                imported += 1;
+            }
+            Err(e) => errors.push(format!("Row {}: {}", row, e)),
+        }
+    }
+
+    Ok(serde_json::json!({
+        "imported": imported,
+        "errors": errors,
+    }))
+}
+
+fn export_products_csv_content(conn: &Connection) -> Result<String, String> {
+    let products = list_products_for_backup(conn)?;
+    let mut out = String::from(
+        "name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active\n",
+    );
+
+    for product in &products {
+        let row = [
+            csv_escape(&product.name),
+            csv_escape(&product.description),
+            format_price_major(product.default_price_minor, &product.default_currency),
+            csv_escape(&product.default_currency),
+            product.default_tax_rate_bps.to_string(),
+            csv_escape(&product.unit),
+            product.is_active.to_string(),
+        ];
+        out.push_str(&row.join(","));
+        out.push('\n');
+    }
+
+    Ok(out)
+}
+
 /// Import clients from a CSV string.
 /// Expected header: name,email,phone,address,city,country,country_code,currency_code,payment_terms_days
 #[tauri::command]
@@ -325,6 +497,24 @@ pub fn export_clients_csv(db: State<'_, DbConn>) -> Result<String, String> {
         out.push('\n');
     }
     Ok(out)
+}
+
+/// Import products from a CSV string.
+/// Expected header: name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active
+#[tauri::command]
+pub fn import_products_csv(
+    db: State<'_, DbConn>,
+    csv_content: String,
+) -> Result<serde_json::Value, String> {
+    let conn = db.lock().map_err(|e| e.to_string())?;
+    import_products_csv_content(&conn, &csv_content)
+}
+
+/// Export all products as a CSV string.
+#[tauri::command]
+pub fn export_products_csv(db: State<'_, DbConn>) -> Result<String, String> {
+    let conn = db.lock().map_err(|e| e.to_string())?;
+    export_products_csv_content(&conn)
 }
 
 /// Export all invoices as a CSV string.
@@ -793,8 +983,12 @@ pub fn restore_database(db: State<'_, DbConn>, backup: Value) -> Result<Value, S
 
 #[cfg(test)]
 mod tests {
-    use super::{csv_escape, parse_csv_line, restore_backup};
+    use super::{
+        csv_escape, export_products_csv_content, import_products_csv_content, parse_csv_line,
+        restore_backup,
+    };
     use crate::db::migrations;
+    use crate::models::product::CreateProduct;
     use rusqlite::Connection;
     use serde_json::json;
 
@@ -836,6 +1030,79 @@ mod tests {
     fn parse_csv_line_handles_basic_quoted_commas() {
         let fields = parse_csv_line("name,\"addr, line\",city");
         assert_eq!(fields, vec!["name", "addr, line", "city"]);
+    }
+
+    #[test]
+    fn import_products_csv_content_imports_products_and_active_flag() {
+        let conn = test_conn();
+        let csv = concat!(
+            "name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active\n",
+            "Consulting,\"Senior advisory\",125.50,USD,1600,hour,true\n",
+            "Legacy license,,2500,UGX,0,seat,false\n",
+            ",Missing name,10,USD,0,unit,true\n",
+            "Broken price,,abc,USD,0,unit,true\n"
+        );
+
+        let result = import_products_csv_content(&conn, csv).expect("import products");
+
+        assert_eq!(result["imported"], 2);
+        assert_eq!(result["errors"].as_array().expect("errors").len(), 2);
+
+        let products = super::list_products_for_backup(&conn).expect("products");
+        let consulting = products
+            .iter()
+            .find(|p| p.name == "Consulting")
+            .expect("consulting product");
+        assert_eq!(consulting.default_price_minor, 12_550);
+        assert_eq!(consulting.default_currency, "USD");
+        assert_eq!(consulting.default_tax_rate_bps, 1600);
+        assert!(consulting.is_active);
+
+        let legacy = products
+            .iter()
+            .find(|p| p.name == "Legacy license")
+            .expect("legacy product");
+        assert_eq!(legacy.default_price_minor, 2_500);
+        assert_eq!(legacy.default_currency, "UGX");
+        assert!(!legacy.is_active);
+    }
+
+    #[test]
+    fn export_products_csv_content_exports_all_products_safely() {
+        let conn = test_conn();
+        let product = CreateProduct {
+            name: "=SUM(A1:A2)".to_string(),
+            description: Some("Plan, quoted".to_string()),
+            default_price_minor: Some(19_995),
+            default_currency: Some("USD".to_string()),
+            default_tax_rate_bps: Some(750),
+            unit: Some("seat".to_string()),
+        };
+        let created =
+            crate::db::queries::products::insert(&conn, &product).expect("insert product");
+        crate::db::queries::products::update(
+            &conn,
+            &created.id,
+            &crate::models::product::UpdateProduct {
+                name: None,
+                description: None,
+                default_price_minor: None,
+                default_currency: None,
+                default_tax_rate_bps: None,
+                unit: None,
+                is_active: Some(false),
+            },
+        )
+        .expect("deactivate product");
+
+        let csv = export_products_csv_content(&conn).expect("export products");
+
+        assert!(csv.starts_with(
+            "name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active\n"
+        ));
+        assert!(csv.contains("'=SUM(A1:A2)"));
+        assert!(csv.contains("\"Plan, quoted\""));
+        assert!(csv.contains(",199.95,USD,750,seat,false\n"));
     }
 
     #[test]

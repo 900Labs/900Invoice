@@ -94,6 +94,8 @@ pub fn run() {
             // Import/Export
             commands::import_export::import_clients_csv,
             commands::import_export::export_clients_csv,
+            commands::import_export::import_products_csv,
+            commands::import_export::export_products_csv,
             commands::import_export::export_invoices_csv,
             commands::import_export::backup_database,
             commands::import_export::restore_database,

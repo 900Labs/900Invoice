@@ -108,6 +108,37 @@
     }
   }
 
+  async function handleImportProducts() {
+    try {
+      const path = selectedPath(await open({
+        multiple: false,
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+        fileAccessMode: 'scoped',
+      }));
+      if (!path) return;
+      const csvContent = await readTextFile(path);
+      const result = await invoke<ImportResult>('import_products_csv', { csvContent });
+      await loadProducts();
+      if (result.errors.length > 0) {
+        toastError(`${result.imported} imported, ${result.errors.length} failed`);
+      } else {
+        success(t('common.success'));
+      }
+    } catch (e) {
+      toastError(String(e));
+    }
+  }
+
+  async function handleExportProducts() {
+    try {
+      const csv = await invoke<string>('export_products_csv');
+      const saved = await saveText(`900invoice-products-${exportDateStamp()}.csv`, csv, ['csv']);
+      if (saved) success(t('common.success'));
+    } catch (e) {
+      toastError(String(e));
+    }
+  }
+
   async function handleExportInvoices() {
     try {
       const csv = await invoke<string>('export_invoices_csv');
@@ -241,6 +272,24 @@
               <p class="ie-desc">Export all clients to CSV.</p>
             </div>
             <button class="btn" onclick={handleExportClients}>
+              ↓ {t('common.export')}
+            </button>
+          </div>
+          <div class="import-export-item">
+            <div>
+              <p class="ie-title">{t('settings.importProducts')}</p>
+              <p class="ie-desc">Import products and services from a CSV file.</p>
+            </div>
+            <button class="btn" onclick={handleImportProducts}>
+              ↑ {t('common.import')}
+            </button>
+          </div>
+          <div class="import-export-item">
+            <div>
+              <p class="ie-title">{t('settings.exportProducts')}</p>
+              <p class="ie-desc">Export all products and services to CSV.</p>
+            </div>
+            <button class="btn" onclick={handleExportProducts}>
               ↓ {t('common.export')}
             </button>
           </div>
