@@ -113,6 +113,10 @@ Signed Windows, macOS, and Linux installers are tracked as future release harden
 
 - Rust 1.75+ — install from [rustup.rs](https://rustup.rs)
 - Node.js 18+ — install from [nodejs.org](https://nodejs.org)
+- Tauri CLI v2 for `cargo tauri` commands:
+  ```bash
+  cargo install tauri-cli --version "^2"
+  ```
 - Tauri v2 system dependencies — see [v2.tauri.app/start/prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 **Linux (Ubuntu/Debian):**
@@ -125,7 +129,7 @@ sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev librsvg2-dev
 ```bash
 # Clone the repository
 git clone https://github.com/900Labs/900Invoice.git
-cd 900invoice
+cd 900Invoice
 
 # Install frontend dependencies
 npm install
