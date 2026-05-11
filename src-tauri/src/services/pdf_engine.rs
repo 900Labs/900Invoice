@@ -9,6 +9,7 @@
 
 use crate::models::business::BusinessProfile;
 use crate::models::invoice::InvoiceWithDetails;
+use chrono::{Datelike, NaiveDate};
 use serde_json::{json, Value};
 
 // ---------------------------------------------------------------------------
@@ -112,14 +113,45 @@ fn currency_config(code: &str) -> CurrencyConfig {
     }
 }
 
+struct LocaleSeparators {
+    thousands_sep: char,
+    decimal_sep: char,
+}
+
+fn locale_language(locale: &str) -> String {
+    locale
+        .trim()
+        .to_lowercase()
+        .split('-')
+        .next()
+        .unwrap_or("en")
+        .to_string()
+}
+
+fn currency_separators(cfg: &CurrencyConfig, locale: &str) -> LocaleSeparators {
+    match locale_language(locale).as_str() {
+        "fr" => LocaleSeparators {
+            thousands_sep: ' ',
+            decimal_sep: ',',
+        },
+        "es" => LocaleSeparators {
+            thousands_sep: '.',
+            decimal_sep: ',',
+        },
+        _ => LocaleSeparators {
+            thousands_sep: cfg.thousands_sep,
+            decimal_sep: cfg.decimal_sep,
+        },
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Formatting helpers
 // ---------------------------------------------------------------------------
 
-/// Format a minor-unit amount as a human-readable currency string.
-/// KES 150000 → "KSh 1,500.00", UGX 1500 → "USh 1,500", NGN 150000 → "₦1,500.00"
-pub fn format_currency_html(amount_minor: i64, currency_code: &str) -> String {
+fn format_currency_html_for_locale(amount_minor: i64, currency_code: &str, locale: &str) -> String {
     let cfg = currency_config(currency_code);
+    let seps = currency_separators(&cfg, locale);
     let negative = amount_minor < 0;
     let abs_amount = amount_minor.unsigned_abs() as i64;
 
@@ -130,11 +162,11 @@ pub fn format_currency_html(amount_minor: i64, currency_code: &str) -> String {
         (abs_amount / divisor, abs_amount % divisor)
     };
 
-    let whole_str = format_with_thousands(whole, cfg.thousands_sep);
+    let whole_str = format_with_thousands(whole, seps.thousands_sep);
 
     let number_str = if cfg.decimals > 0 {
         let frac_str = format!("{:0>width$}", frac, width = cfg.decimals as usize);
-        format!("{}{}{}", whole_str, cfg.decimal_sep, frac_str)
+        format!("{}{}{}", whole_str, seps.decimal_sep, frac_str)
     } else {
         whole_str
     };
@@ -165,27 +197,92 @@ fn format_with_thousands(n: i64, sep: char) -> String {
     result
 }
 
-/// Format quantity stored as qty*100 integer.
-fn format_quantity(qty: i64) -> String {
-    let whole = qty / 100;
-    let frac = (qty % 100).unsigned_abs();
+fn format_quantity_for_locale(qty: i64, locale: &str) -> String {
+    let seps = currency_separators(&currency_config("USD"), locale);
+    let negative = qty < 0;
+    let abs_qty = qty.unsigned_abs() as i64;
+    let whole = abs_qty / 100;
+    let frac = abs_qty % 100;
+    let sign = if negative { "-" } else { "" };
     if frac == 0 {
-        format!("{}", whole)
+        format!(
+            "{}{}",
+            sign,
+            format_with_thousands(whole, seps.thousands_sep)
+        )
     } else {
-        format!("{}.{:02}", whole, frac)
+        format!(
+            "{}{}{}{:02}",
+            sign,
+            format_with_thousands(whole, seps.thousands_sep),
+            seps.decimal_sep,
+            frac
+        )
     }
 }
 
-/// Format basis points as percentage string. 1600 → "16%", 750 → "7.5%"
-fn format_rate_bps(rate_bps: i32) -> String {
+fn format_rate_bps_for_locale(rate_bps: i32, locale: &str) -> String {
+    let seps = currency_separators(&currency_config("USD"), locale);
     let whole = rate_bps / 100;
     let frac = rate_bps % 100;
     if frac == 0 {
         format!("{}%", whole)
     } else {
         let s = format!("{}.{:02}", whole, frac);
-        let trimmed = s.trim_end_matches('0');
+        let trimmed = s
+            .trim_end_matches('0')
+            .replace('.', &seps.decimal_sep.to_string());
         format!("{}%", trimmed)
+    }
+}
+
+fn format_date_for_locale(iso_date: &str, date_format: &str, locale: &str) -> String {
+    let date_part = iso_date
+        .split(['T', ' '])
+        .next()
+        .filter(|part| !part.is_empty())
+        .unwrap_or(iso_date);
+    let Ok(date) = NaiveDate::parse_from_str(date_part, "%Y-%m-%d") else {
+        return iso_date.to_string();
+    };
+    let y = date.year();
+    let m = date.month();
+    let d = date.day();
+
+    match date_format {
+        "DD/MM/YYYY" => format!("{d:02}/{m:02}/{y:04}"),
+        "MM/DD/YYYY" => format!("{m:02}/{d:02}/{y:04}"),
+        "DD.MM.YYYY" => format!("{d:02}.{m:02}.{y:04}"),
+        "MMM D, YYYY" => match locale_language(locale).as_str() {
+            "en" => format!("{} {}, {}", month_name(locale, m), d, y),
+            _ => format!("{} {} {}", d, month_name(locale, m), y),
+        },
+        _ => format!("{y:04}-{m:02}-{d:02}"),
+    }
+}
+
+fn month_name(locale: &str, month: u32) -> &'static str {
+    let idx = month.saturating_sub(1).min(11) as usize;
+    match locale_language(locale).as_str() {
+        "fr" => [
+            "janv.", "fevr.", "mars", "avr.", "mai", "juin", "juil.", "aout", "sept.", "oct.",
+            "nov.", "dec.",
+        ][idx],
+        "es" => [
+            "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic",
+        ][idx],
+        "sw" => [
+            "Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ago", "Sep", "Okt", "Nov", "Des",
+        ][idx],
+        "hi" => [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ][idx],
+        "ar" => [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ][idx],
+        _ => [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ][idx],
     }
 }
 
@@ -285,14 +382,19 @@ fn base64_encode(input: &[u8]) -> String {
 /// Generate a complete, print-ready HTML invoice.
 ///
 /// `paper_size`: "a4" (default) or "letter"
-/// `locale`: reserved for future RTL/locale support
+/// `locale`: active app locale for language metadata and number/date formatting
 pub fn generate_invoice_html(
     invoice: &InvoiceWithDetails,
     business: &BusinessProfile,
     paper_size: &str,
-    _locale: &str,
+    locale: &str,
+    date_format: &str,
 ) -> String {
     let currency = &invoice.currency_code;
+    let lang = locale_language(locale);
+    let dir = if lang == "ar" { "rtl" } else { "ltr" };
+    let issue_date = format_date_for_locale(&invoice.issue_date, date_format, locale);
+    let due_date = format_date_for_locale(&invoice.due_date, date_format, locale);
 
     let page_css = match paper_size.to_lowercase().as_str() {
         "letter" => "@page { size: letter; margin: 0; }",
@@ -355,7 +457,7 @@ pub fn generate_invoice_html(
         let disc_note = if item.discount_bps > 0 {
             format!(
                 r#"<div class="item-note">Disc: {}</div>"#,
-                format_rate_bps(item.discount_bps)
+                format_rate_bps_for_locale(item.discount_bps, locale)
             )
         } else {
             String::new()
@@ -372,22 +474,26 @@ pub fn generate_invoice_html(
             idx + 1,
             html_escape(&item.description),
             disc_note,
-            format_quantity(item.quantity),
-            format_currency_html(item.unit_price_minor, currency),
+            format_quantity_for_locale(item.quantity, locale),
+            format_currency_html_for_locale(item.unit_price_minor, currency, locale),
             if item.tax_rate_bps > 0 {
-                format_rate_bps(item.tax_rate_bps)
+                format_rate_bps_for_locale(item.tax_rate_bps, locale)
             } else {
                 "—".into()
             },
-            format_currency_html(item.line_total_minor, currency),
+            format_currency_html_for_locale(item.line_total_minor, currency, locale),
         ));
     }
 
     // Tax rows
     let mut tax_rows = String::new();
     for tax in &invoice.taxes {
-        let label = format!("{} ({})", tax.tax_name, format_rate_bps(tax.tax_rate_bps));
-        let amt = format_currency_html(tax.tax_amount_minor, currency);
+        let label = format!(
+            "{} ({})",
+            tax.tax_name,
+            format_rate_bps_for_locale(tax.tax_rate_bps, locale)
+        );
+        let amt = format_currency_html_for_locale(tax.tax_amount_minor, currency, locale);
         if tax.is_withholding {
             tax_rows.push_str(&format!(
                 r#"<tr><td class="slbl">{} <em class="wht">(WHT)</em></td><td class="r red">-{}</td></tr>"#,
@@ -406,7 +512,7 @@ pub fn generate_invoice_html(
     let discount_row = if invoice.discount_minor > 0 {
         format!(
             r#"<tr><td class="slbl">Discount</td><td class="r red">-{}</td></tr>"#,
-            format_currency_html(invoice.discount_minor, currency)
+            format_currency_html_for_locale(invoice.discount_minor, currency, locale)
         )
     } else {
         String::new()
@@ -421,8 +527,8 @@ pub fn generate_invoice_html(
             r#"<tr class="sep"><td colspan="2"><hr/></td></tr>
             <tr><td class="slbl">Amount Paid</td><td class="r red">-{}</td></tr>
             <tr class="balance"><td class="slbl">Balance Due</td><td class="r red-bold">{}</td></tr>"#,
-            format_currency_html(invoice.amount_paid_minor, currency),
-            format_currency_html(balance, currency),
+            format_currency_html_for_locale(invoice.amount_paid_minor, currency, locale),
+            format_currency_html_for_locale(balance, currency, locale),
         )
     } else {
         String::new()
@@ -457,7 +563,7 @@ pub fn generate_invoice_html(
 
     format!(
         r#"<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}" dir="{dir}">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -610,8 +716,6 @@ table.sum td{{padding:3px 0;vertical-align:middle}}
         biz_email = biz_email,
         biz_tax = biz_tax,
         biz_web = biz_web,
-        issue_date = html_escape(&invoice.issue_date),
-        due_date = html_escape(&invoice.due_date),
         status_label = status_label,
         cli_name = html_escape(cli_name_text),
         cli_addr = cli_addr,
@@ -619,10 +723,14 @@ table.sum td{{padding:3px 0;vertical-align:middle}}
         cli_phone = cli_phone,
         cli_tax = cli_tax,
         line_rows = line_rows,
-        subtotal = format_currency_html(invoice.subtotal_minor, currency),
+        lang = html_escape(&lang),
+        dir = dir,
+        issue_date = html_escape(&issue_date),
+        due_date = html_escape(&due_date),
+        subtotal = format_currency_html_for_locale(invoice.subtotal_minor, currency, locale),
         discount_row = discount_row,
         tax_rows = tax_rows,
-        total = format_currency_html(invoice.total_minor, currency),
+        total = format_currency_html_for_locale(invoice.total_minor, currency, locale),
         paid_rows = paid_rows,
         pay_details = pay_details,
         notes_html = notes_html,
@@ -726,14 +834,15 @@ pub fn generate_invoice_pdf_bytes(
     invoice: &InvoiceWithDetails,
     business: &BusinessProfile,
     paper_size: &str,
-    _locale: &str,
+    locale: &str,
+    date_format: &str,
 ) -> Vec<u8> {
     let (page_width, page_height) = match paper_size.to_lowercase().as_str() {
         "letter" => (612.0, 792.0),
         _ => (595.0, 842.0),
     };
 
-    let mut renderer = PdfRenderer::new(page_width, page_height);
+    let mut renderer = PdfRenderer::new(page_width, page_height, locale, date_format);
     renderer.draw_invoice(invoice, business);
     renderer.finish()
 }
@@ -743,18 +852,22 @@ struct PdfRenderer {
     height: f32,
     margin: f32,
     y: f32,
+    locale: String,
+    date_format: String,
     pages: Vec<String>,
     canvas: PdfCanvas,
 }
 
 impl PdfRenderer {
-    fn new(width: f32, height: f32) -> Self {
+    fn new(width: f32, height: f32, locale: &str, date_format: &str) -> Self {
         let margin = 40.0;
         Self {
             width,
             height,
             margin,
             y: height - margin,
+            locale: locale.to_string(),
+            date_format: date_format.to_string(),
             pages: Vec::new(),
             canvas: PdfCanvas::new(),
         }
@@ -804,6 +917,9 @@ impl PdfRenderer {
         let dark = (0.10, 0.10, 0.10);
         let muted = (0.34, 0.34, 0.34);
         let inv_num = invoice.invoice_number.as_deref().unwrap_or("DRAFT");
+        let issue_date =
+            format_date_for_locale(&invoice.issue_date, &self.date_format, &self.locale);
+        let due_date = format_date_for_locale(&invoice.due_date, &self.date_format, &self.locale);
         let business_name = if business.name.trim().is_empty() {
             "900Invoice"
         } else {
@@ -843,7 +959,7 @@ impl PdfRenderer {
             right,
             meta_y - 14.0,
             9.0,
-            &format!("Date: {}", invoice.issue_date),
+            &format!("Date: {}", issue_date),
             "F1",
             muted,
         );
@@ -851,7 +967,7 @@ impl PdfRenderer {
             right,
             meta_y - 28.0,
             9.0,
-            &format!("Due: {}", invoice.due_date),
+            &format!("Due: {}", due_date),
             "F1",
             muted,
         );
@@ -1038,7 +1154,7 @@ impl PdfRenderer {
             cols.qty_right,
             row_y,
             8.0,
-            &format_quantity(item.quantity),
+            &format_quantity_for_locale(item.quantity, &self.locale),
             "F1",
             (0.10, 0.10, 0.10),
         );
@@ -1046,7 +1162,7 @@ impl PdfRenderer {
             cols.unit_right,
             row_y,
             8.0,
-            &format_currency_pdf(item.unit_price_minor, currency),
+            &format_currency_pdf_for_locale(item.unit_price_minor, currency, &self.locale),
             "F1",
             (0.10, 0.10, 0.10),
         );
@@ -1054,7 +1170,7 @@ impl PdfRenderer {
             cols.tax_right,
             row_y,
             8.0,
-            &format_rate_bps(item.tax_rate_bps),
+            &format_rate_bps_for_locale(item.tax_rate_bps, &self.locale),
             "F1",
             (0.10, 0.10, 0.10),
         );
@@ -1062,7 +1178,7 @@ impl PdfRenderer {
             cols.amount_right,
             row_y,
             8.0,
-            &format_currency_pdf(item.line_total_minor, currency),
+            &format_currency_pdf_for_locale(item.line_total_minor, currency, &self.locale),
             "F1",
             (0.10, 0.10, 0.10),
         );
@@ -1100,7 +1216,11 @@ impl PdfRenderer {
             y -= 16.0;
         }
         for tax in &invoice.taxes {
-            let label = format!("{} ({})", tax.tax_name, format_rate_bps(tax.tax_rate_bps));
+            let label = format!(
+                "{} ({})",
+                tax.tax_name,
+                format_rate_bps_for_locale(tax.tax_rate_bps, &self.locale)
+            );
             let amount = if tax.is_withholding {
                 -tax.tax_amount_minor
             } else {
@@ -1170,7 +1290,7 @@ impl PdfRenderer {
             totals.right,
             y,
             size,
-            &format_currency_pdf(amount, currency),
+            &format_currency_pdf_for_locale(amount, currency, &self.locale),
             font,
             color,
         );
@@ -1356,8 +1476,9 @@ fn compact_lines(parts: &[&str]) -> Vec<String> {
         .collect()
 }
 
-fn format_currency_pdf(amount_minor: i64, currency_code: &str) -> String {
+fn format_currency_pdf_for_locale(amount_minor: i64, currency_code: &str, locale: &str) -> String {
     let cfg = currency_config(currency_code);
+    let seps = currency_separators(&cfg, locale);
     let negative = amount_minor < 0;
     let abs_amount = amount_minor.unsigned_abs() as i64;
     let (whole, frac): (i64, i64) = if cfg.decimals == 0 {
@@ -1366,12 +1487,12 @@ fn format_currency_pdf(amount_minor: i64, currency_code: &str) -> String {
         let divisor = 10i64.pow(cfg.decimals);
         (abs_amount / divisor, abs_amount % divisor)
     };
-    let whole_str = format_with_thousands(whole, cfg.thousands_sep);
+    let whole_str = format_with_thousands(whole, seps.thousands_sep);
     let number = if cfg.decimals > 0 {
         format!(
             "{}{}{:0>width$}",
             whole_str,
-            cfg.decimal_sep,
+            seps.decimal_sep,
             frac,
             width = cfg.decimals as usize
         )
@@ -1521,8 +1642,13 @@ fn build_pdf_document(pages: &[String], width: f32, height: f32) -> Vec<u8> {
 // Preview JSON data
 // ---------------------------------------------------------------------------
 
-/// Generate JSON preview data for frontend rendering.
-pub fn get_preview_data(invoice: &InvoiceWithDetails, business: &BusinessProfile) -> Value {
+/// Generate JSON preview data using the active invoice render settings.
+pub fn get_preview_data_with_locale(
+    invoice: &InvoiceWithDetails,
+    business: &BusinessProfile,
+    locale: &str,
+    date_format: &str,
+) -> Value {
     let currency = &invoice.currency_code;
     let balance = invoice
         .total_minor
@@ -1535,15 +1661,15 @@ pub fn get_preview_data(invoice: &InvoiceWithDetails, business: &BusinessProfile
             json!({
                 "id": item.id,
                 "description": item.description,
-                "quantity": format_quantity(item.quantity),
+                "quantity": format_quantity_for_locale(item.quantity, locale),
                 "quantity_raw": item.quantity,
-                "unit_price": format_currency_html(item.unit_price_minor, currency),
+                "unit_price": format_currency_html_for_locale(item.unit_price_minor, currency, locale),
                 "unit_price_minor": item.unit_price_minor,
-                "tax_rate": format_rate_bps(item.tax_rate_bps),
+                "tax_rate": format_rate_bps_for_locale(item.tax_rate_bps, locale),
                 "tax_rate_bps": item.tax_rate_bps,
-                "discount": format_rate_bps(item.discount_bps),
+                "discount": format_rate_bps_for_locale(item.discount_bps, locale),
                 "discount_bps": item.discount_bps,
-                "line_total": format_currency_html(item.line_total_minor, currency),
+                "line_total": format_currency_html_for_locale(item.line_total_minor, currency, locale),
                 "line_total_minor": item.line_total_minor,
                 "sort_order": item.sort_order,
             })
@@ -1556,9 +1682,9 @@ pub fn get_preview_data(invoice: &InvoiceWithDetails, business: &BusinessProfile
         .map(|t| {
             json!({
                 "name": t.tax_name,
-                "rate": format_rate_bps(t.tax_rate_bps),
+                "rate": format_rate_bps_for_locale(t.tax_rate_bps, locale),
                 "rate_bps": t.tax_rate_bps,
-                "amount": format_currency_html(t.tax_amount_minor, currency),
+                "amount": format_currency_html_for_locale(t.tax_amount_minor, currency, locale),
                 "amount_minor": t.tax_amount_minor,
                 "is_withholding": t.is_withholding,
             })
@@ -1570,11 +1696,12 @@ pub fn get_preview_data(invoice: &InvoiceWithDetails, business: &BusinessProfile
         .iter()
         .map(|p| {
             json!({
-                "amount": format_currency_html(p.amount_minor, &p.currency_code),
+                "amount": format_currency_html_for_locale(p.amount_minor, &p.currency_code, locale),
                 "amount_minor": p.amount_minor,
                 "currency_code": p.currency_code,
                 "payment_method": p.payment_method,
                 "paid_at": p.paid_at,
+                "paid_at_formatted": format_date_for_locale(&p.paid_at, date_format, locale),
             })
         })
         .collect();
@@ -1622,21 +1749,23 @@ pub fn get_preview_data(invoice: &InvoiceWithDetails, business: &BusinessProfile
             "status": invoice.status,
             "currency_code": currency,
             "issue_date": invoice.issue_date,
+            "issue_date_formatted": format_date_for_locale(&invoice.issue_date, date_format, locale),
             "due_date": invoice.due_date,
+            "due_date_formatted": format_date_for_locale(&invoice.due_date, date_format, locale),
             "uses_inclusive_taxes": invoice.uses_inclusive_taxes,
             "notes": invoice.notes,
             "terms": invoice.terms,
-            "subtotal": format_currency_html(invoice.subtotal_minor, currency),
+            "subtotal": format_currency_html_for_locale(invoice.subtotal_minor, currency, locale),
             "subtotal_minor": invoice.subtotal_minor,
-            "discount": format_currency_html(invoice.discount_minor, currency),
+            "discount": format_currency_html_for_locale(invoice.discount_minor, currency, locale),
             "discount_minor": invoice.discount_minor,
-            "tax_amount": format_currency_html(invoice.tax_amount_minor, currency),
+            "tax_amount": format_currency_html_for_locale(invoice.tax_amount_minor, currency, locale),
             "tax_amount_minor": invoice.tax_amount_minor,
-            "total": format_currency_html(invoice.total_minor, currency),
+            "total": format_currency_html_for_locale(invoice.total_minor, currency, locale),
             "total_minor": invoice.total_minor,
-            "amount_paid": format_currency_html(invoice.amount_paid_minor, currency),
+            "amount_paid": format_currency_html_for_locale(invoice.amount_paid_minor, currency, locale),
             "amount_paid_minor": invoice.amount_paid_minor,
-            "balance_due": format_currency_html(balance, currency),
+            "balance_due": format_currency_html_for_locale(balance, currency, locale),
             "balance_due_minor": balance,
         },
         "client": {
@@ -1789,42 +1918,78 @@ mod tests {
 
     #[test]
     fn test_format_currency_kes() {
-        assert_eq!(format_currency_html(150_000, "KES"), "KSh 1,500.00");
+        assert_eq!(
+            format_currency_html_for_locale(150_000, "KES", "en"),
+            "KSh 1,500.00"
+        );
     }
 
     #[test]
     fn test_format_currency_ngn() {
-        assert_eq!(format_currency_html(150_000, "NGN"), "\u{20A6}1,500.00");
+        assert_eq!(
+            format_currency_html_for_locale(150_000, "NGN", "en"),
+            "\u{20A6}1,500.00"
+        );
     }
 
     #[test]
     fn test_format_currency_ugx_no_decimals() {
-        assert_eq!(format_currency_html(1_500, "UGX"), "USh 1,500");
+        assert_eq!(
+            format_currency_html_for_locale(1_500, "UGX", "en"),
+            "USh 1,500"
+        );
     }
 
     #[test]
     fn test_format_currency_xof_no_decimals() {
-        assert_eq!(format_currency_html(150_000, "XOF"), "CFA 150,000");
+        assert_eq!(
+            format_currency_html_for_locale(150_000, "XOF", "en"),
+            "CFA 150,000"
+        );
     }
 
     #[test]
     fn test_format_currency_usd() {
-        assert_eq!(format_currency_html(100, "USD"), "$1.00");
+        assert_eq!(format_currency_html_for_locale(100, "USD", "en"), "$1.00");
+    }
+
+    #[test]
+    fn test_locale_currency_formatting() {
+        assert_eq!(
+            format_currency_html_for_locale(150_000, "KES", "fr"),
+            "KSh 1 500,00"
+        );
+        assert_eq!(
+            format_currency_pdf_for_locale(150_000, "KES", "es"),
+            "KES 1.500,00"
+        );
     }
 
     #[test]
     fn test_format_quantity() {
-        assert_eq!(format_quantity(100), "1");
-        assert_eq!(format_quantity(150), "1.50");
-        assert_eq!(format_quantity(333), "3.33");
+        assert_eq!(format_quantity_for_locale(100, "en"), "1");
+        assert_eq!(format_quantity_for_locale(150, "en"), "1.50");
+        assert_eq!(format_quantity_for_locale(333, "en"), "3.33");
     }
 
     #[test]
     fn test_format_rate_bps() {
-        assert_eq!(format_rate_bps(1600), "16%");
-        assert_eq!(format_rate_bps(750), "7.5%");
-        assert_eq!(format_rate_bps(0), "0%");
-        assert_eq!(format_rate_bps(250), "2.5%");
+        assert_eq!(format_rate_bps_for_locale(1600, "en"), "16%");
+        assert_eq!(format_rate_bps_for_locale(750, "en"), "7.5%");
+        assert_eq!(format_rate_bps_for_locale(0, "en"), "0%");
+        assert_eq!(format_rate_bps_for_locale(250, "en"), "2.5%");
+    }
+
+    #[test]
+    fn test_locale_date_formatting() {
+        assert_eq!(
+            format_date_for_locale("2026-05-11", "DD/MM/YYYY", "fr"),
+            "11/05/2026"
+        );
+        assert_eq!(
+            format_date_for_locale("2026-05-11", "MMM D, YYYY", "fr"),
+            "11 mai 2026"
+        );
     }
 
     #[test]
@@ -1836,7 +2001,7 @@ mod tests {
     fn test_generate_invoice_pdf_bytes_returns_real_pdf() {
         let invoice = invoice_fixture();
         let business = business_fixture();
-        let pdf = generate_invoice_pdf_bytes(&invoice, &business, "a4", "en");
+        let pdf = generate_invoice_pdf_bytes(&invoice, &business, "a4", "en", "YYYY-MM-DD");
         let text = String::from_utf8_lossy(&pdf);
 
         assert!(pdf.starts_with(b"%PDF-1.4"));
@@ -1845,6 +2010,42 @@ mod tests {
         assert!(text.contains("Monthly advisory retainer"));
         assert!(text.contains("%%EOF"));
         assert!(!text.contains("<html"));
+    }
+
+    #[test]
+    fn test_generate_invoice_pdf_bytes_uses_paper_and_locale_settings() {
+        let invoice = invoice_fixture();
+        let business = business_fixture();
+        let pdf = generate_invoice_pdf_bytes(&invoice, &business, "letter", "fr", "DD/MM/YYYY");
+        let text = String::from_utf8_lossy(&pdf);
+
+        assert!(text.contains("/MediaBox [0 0 612.00 792.00]"));
+        assert!(text.contains("Date: 11/05/2026"));
+        assert!(text.contains("Due: 10/06/2026"));
+        assert!(text.contains("KES 1 000,00"));
+    }
+
+    #[test]
+    fn test_generate_invoice_html_uses_paper_and_locale_settings() {
+        let invoice = invoice_fixture();
+        let business = business_fixture();
+        let html = generate_invoice_html(&invoice, &business, "letter", "fr", "DD/MM/YYYY");
+
+        assert!(html.contains(r#"<html lang="fr" dir="ltr">"#));
+        assert!(html.contains("@page { size: letter; margin: 0; }"));
+        assert!(html.contains("11/05/2026"));
+        assert!(html.contains("KSh 1 000,00"));
+    }
+
+    #[test]
+    fn test_preview_data_uses_locale_settings() {
+        let invoice = invoice_fixture();
+        let business = business_fixture();
+        let preview = get_preview_data_with_locale(&invoice, &business, "fr", "DD/MM/YYYY");
+
+        assert_eq!(preview["invoice"]["issue_date_formatted"], "11/05/2026");
+        assert_eq!(preview["invoice"]["total"], "KSh 1 160,00");
+        assert_eq!(preview["line_items"][0]["unit_price"], "KSh 1 000,00");
     }
 
     #[test]

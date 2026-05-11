@@ -75,7 +75,7 @@ Built by [900 Labs](https://www.900labs.com) — building enterprise-grade open 
 
 ### Internationalization
 - 6 languages: English, French, Spanish, Arabic (RTL), Swahili, Hindi
-- ~250 translation keys
+- 300+ translation keys
 - RTL layout support for Arabic
 - Locale-aware date and number formatting
 
