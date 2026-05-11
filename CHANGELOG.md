@@ -77,13 +77,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected offline-first backup documentation to describe the current manual JSON backup format instead of unimplemented backup reminders or raw SQLite backup files.
 - Exposed the invoice Void action for paid invoices so the detail UI matches the backend-supported Draft -> Finalized -> Sent -> Paid -> Void lifecycle.
 - Reworded README and Tauri ADR shell claims to avoid unmeasured binary/RAM promises, mark updater delivery as future work, and point command registration docs to `src-tauri/src/lib.rs`.
-- Corrected the README tax engine country list by removing the unseeded Senegal pre-configured tax-rate claim.
+- Audited the README tax engine country list against seeded country codes.
 - Corrected the i18n contributor guide to reference the current `i18nStore.ts` registry, nested JSON shape, `t()` helper, and RTL setup path.
 - Wrapped invoice finalization numbering in one SQLite transaction and updated the numbering ADR to describe the current `invoice_sequences` implementation.
 - Kept recurring-generated draft invoices numberless until finalization so recurring generation no longer advances invoice sequences early.
 - Aligned source-build Rust prerequisites with the locked dependency graph by documenting and pinning Rust 1.88+.
 - Restored Senegal to the README pre-configured tax-rate country list to match the active `SN` seed rate.
 - Aligned source-build Node.js prerequisites with the locked Svelte/Vite engine range and pinned the root package engine.
+- Corrected offline-first architecture notes to state that the current app ships no runtime internet workflow for exchange-rate refresh.
 - Preserved product catalog default tax-rate identity so quick-invoiced line items keep the selected tax type when multiple active rates share the same percentage.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.

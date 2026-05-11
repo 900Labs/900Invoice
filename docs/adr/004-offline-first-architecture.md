@@ -53,9 +53,10 @@ Progressive Web Apps require a browser and work well online. Offline PWAs exist 
 - Database backup and restore
 - CSV import/export
 
-**Functions that require internet (optional, gracefully degrade):**
-- Exchange rate updates (falls back to cached rates; app includes sensible defaults)
-- Future: multi-device sync (not in v1.0.0)
+**Current runtime network behavior:**
+- No shipped application workflow performs internet requests.
+- Exchange rates are seeded offline and cached locally. Additional rate rows can be supplied through the backend upsert command by future import or refresh tooling.
+- Future optional online features, such as external rate refresh or multi-device sync, must gracefully degrade and must not block core invoicing workflows.
 
 **Data storage:**
 - Single SQLite file: `{APP_DATA_DIR}/900invoice.db`
@@ -78,7 +79,7 @@ While v1.0.0 is offline-only, the schema includes a `changelog` table that recor
 ### Negative / Trade-offs
 - No automatic cross-device sync in v1.0.0 (planned for a future release)
 - Database backup is manual; users are responsible for creating and storing their own backup files
-- Exchange rates require manual update or occasional internet access; rates can become stale
+- Exchange rates are seeded defaults or externally supplied cached rows; rates can become stale until refreshed by future import or online-update tooling
 
 ### Backup Strategy
 
