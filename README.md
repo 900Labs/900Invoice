@@ -50,7 +50,7 @@ Built by [900 Labs](https://www.900labs.com) — building enterprise-grade open 
 - Country-specific tax rates (VAT, GST, WHT, NHIL, GETFund)
 - Tax-exclusive and tax-inclusive pricing
 - Withholding tax support
-- Pre-configured rates for Kenya, Nigeria, South Africa, India, Ghana, Tanzania, Uganda
+- Pre-configured rates for Kenya, Nigeria, South Africa, India, Ghana, Tanzania, Uganda, Senegal
 
 ### Client & Product Management
 - Client database with billing details and tax IDs
