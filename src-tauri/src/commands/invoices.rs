@@ -63,8 +63,34 @@ pub fn delete_invoice(db: State<'_, DbConn>, id: String) -> Result<(), String> {
 pub fn finalize_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
 
+    conn.execute_batch("BEGIN IMMEDIATE")
+        .map_err(|e| format!("Failed to begin finalize transaction: {e}"))?;
+
+    let result = finalize_invoice_in_transaction(&conn, &id);
+
+    let updated = match result {
+        Ok(updated) => {
+            conn.execute_batch("COMMIT").map_err(|e| {
+                let _ = conn.execute_batch("ROLLBACK");
+                format!("Failed to commit finalize transaction: {e}")
+            })?;
+            updated
+        }
+        Err(err) => {
+            let _ = conn.execute_batch("ROLLBACK");
+            return Err(err);
+        }
+    };
+
+    serde_json::to_value(updated).map_err(|e| e.to_string())
+}
+
+fn finalize_invoice_in_transaction(
+    conn: &Connection,
+    id: &str,
+) -> Result<crate::models::invoice::InvoiceWithDetails, String> {
     // Verify invoice exists and is in draft
-    let invoice = db::queries::invoices::get_by_id(&conn, &id)
+    let invoice = db::queries::invoices::get_by_id(conn, id)
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("Invoice not found: {}", id))?;
 
@@ -77,22 +103,20 @@ pub fn finalize_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json:
 
     // Assign invoice number if not already set
     if invoice.invoice_number.is_none() {
-        let number = invoice_numbering::generate_invoice_number(&conn, "default")?;
-        db::queries::invoices::set_invoice_number(&conn, &id, &number)
-            .map_err(|e| e.to_string())?;
+        let number = invoice_numbering::generate_invoice_number_in_transaction(conn, "default")?;
+        db::queries::invoices::set_invoice_number(conn, id, &number).map_err(|e| e.to_string())?;
     }
 
     // Recalculate totals from line items
-    recalculate_invoice_totals(&conn, &id)?;
-    ensure_invoice_exchange_rate_snapshot(&conn, &id)?;
+    recalculate_invoice_totals(conn, id)?;
+    ensure_invoice_exchange_rate_snapshot(conn, id)?;
 
-    db::queries::invoices::update_status(&conn, &id, "finalized", Some("finalized_at"))
+    db::queries::invoices::update_status(conn, id, "finalized", Some("finalized_at"))
         .map_err(|e| e.to_string())?;
 
-    let updated = db::queries::invoices::get_with_details(&conn, &id)
+    db::queries::invoices::get_with_details(conn, id)
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| "Invoice not found after finalize".to_string())?;
-    serde_json::to_value(updated).map_err(|e| e.to_string())
+        .ok_or_else(|| "Invoice not found after finalize".to_string())
 }
 
 #[tauri::command]

@@ -3,9 +3,10 @@
 //!
 //! Format: `{PREFIX}{SEP}{YEAR}{SEP}{PADDED_NUMBER}` e.g. `INV-2026-0001`
 //!
-//! The actual atomic counter increment is handled in the DB queries layer
-//! (`db::queries::sequences`) using BEGIN IMMEDIATE transactions.
-//! This service provides the public API and preview functionality.
+//! The default public generator wraps the counter increment in a
+//! BEGIN IMMEDIATE transaction. Callers that already own a write transaction
+//! can use the transaction-scoped helper so invoice status changes and
+//! sequence advancement commit or roll back together.
 
 use chrono::Datelike;
 use rusqlite::Connection;
@@ -21,10 +22,18 @@ use rusqlite::Connection;
 ///
 /// Returns the formatted invoice number string (e.g. "INV-2026-0001").
 pub fn generate_invoice_number(conn: &Connection, sequence_name: &str) -> Result<String, String> {
-    // Attempt to delegate to the DB queries layer if available.
-    // If the queries layer hasn't been set up yet (tests), fall back to
-    // the inline implementation.
     inner_generate(conn, sequence_name)
+}
+
+/// Generate the next invoice number inside an existing write transaction.
+///
+/// This advances the sequence counter without opening or committing a nested
+/// transaction, allowing callers to roll the sequence back with related writes.
+pub fn generate_invoice_number_in_transaction(
+    conn: &Connection,
+    sequence_name: &str,
+) -> Result<String, String> {
+    try_generate_and_advance(conn, sequence_name)
 }
 
 /// Preview the next invoice number without consuming it.
@@ -230,5 +239,19 @@ mod tests {
         let conn = setup_db();
         let result = generate_invoice_number(&conn, "nonexistent");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn transaction_scoped_generation_rolls_back_with_caller() {
+        let conn = setup_db();
+        let y = chrono::Local::now().year();
+
+        conn.execute_batch("BEGIN IMMEDIATE").unwrap();
+        let generated = generate_invoice_number_in_transaction(&conn, "default").unwrap();
+        assert_eq!(generated, format!("INV-{y}-0001"));
+        conn.execute_batch("ROLLBACK").unwrap();
+
+        let preview = preview_next_number(&conn, "default").unwrap();
+        assert_eq!(preview, format!("INV-{y}-0001"));
     }
 }
