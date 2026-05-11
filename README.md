@@ -83,7 +83,7 @@ Built by [900 Labs](https://www.900labs.com) — building enterprise-grade open 
 
 | Component | Technology | Why |
 |-----------|-----------|-----|
-| Desktop Shell | Tauri v2 | 2.5 MB binary, 30 MB RAM, instant startup |
+| Desktop Shell | Tauri v2 | Small native shell, system WebView, fast startup |
 | Frontend | Svelte 5 | Smallest bundle, reactive with Runes |
 | Backend | Rust | Memory-safe, native performance |
 | Database | SQLite (rusqlite) | Zero-config, single-file, offline |
@@ -93,10 +93,10 @@ Built by [900 Labs](https://www.900labs.com) — building enterprise-grade open 
 ### Why Tauri v2?
 
 | Metric | Tauri v2 | Electron | Advantage |
-|--------|----------|----------|-----------| 
-| Binary Size | 2.5–3 MB | 150+ MB | 50x smaller |
-| RAM (idle) | 30–40 MB | 150–300+ MB | 5–8x less |
-| Startup Time | < 500 ms | 1–3 seconds | 2–6x faster |
+|--------|----------|----------|-----------|
+| Bundle model | Uses the system WebView | Bundles Chromium | Smaller platform packages |
+| RAM profile | Native shell + system WebView | Bundled Chromium process | Lower idle memory profile |
+| Startup profile | Native shell startup | Chromium startup | Faster startup profile |
 
 On a 4-year-old laptop with 4 GB of RAM running three browser tabs, this difference is everything.
 
