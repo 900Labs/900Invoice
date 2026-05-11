@@ -38,7 +38,7 @@ Built by [900 Labs](https://www.900labs.com) — building enterprise-grade open 
 - Create, edit, duplicate, and void invoices
 - Full lifecycle: Draft → Finalized → Sent → Paid → Void
 - Customizable invoice number sequences (INV-2026-0001)
-- Professional PDF generation via typst-bake
+- Professional native PDF export
 - Live invoice preview
 
 ### Multi-Currency Support
@@ -87,8 +87,8 @@ Built by [900 Labs](https://www.900labs.com) — building enterprise-grade open 
 | Frontend | Svelte 5 | Smallest bundle, reactive with Runes |
 | Backend | Rust | Memory-safe, native performance |
 | Database | SQLite (rusqlite) | Zero-config, single-file, offline |
-| PDF Engine | typst-bake | Compile-time templates, millisecond generation |
-| Scheduler | tokio-cron-scheduler | Recurring invoice automation |
+| PDF Engine | Rust PDF/HTML renderer | Native PDF export plus live invoice preview |
+| Scheduler | Rust due-date scheduler | Recurring invoice automation |
 
 ### Why Tauri v2?
 
@@ -160,11 +160,10 @@ The production binary will be in `src-tauri/target/release/bundle/`.
 │   └── lib/                # Tauri IPC wrappers
 ├── src-tauri/              # Rust backend
 │   └── src/
-│       ├── commands/       # ~45 Tauri commands (IPC handlers)
+│       ├── commands/       # 61 Tauri commands (IPC handlers)
 │       ├── models/         # Data structures (Invoice, Client, etc.)
 │       ├── db/             # SQLite schema, migrations, queries
 │       ├── services/       # Tax calc, PDF engine, numbering
-│       ├── templates/      # Typst invoice template
 │       └── sync/           # Changelog for future sync
 ├── docs/                   # Documentation
 │   └── adr/                # Architecture Decision Records
@@ -185,8 +184,8 @@ Your data never leaves your machine unless you explicitly export it.
 ## Documentation
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — system design, data flow, money conventions
-- [API Documentation](docs/API.md) — complete Tauri command reference (~45 commands)
-- [Template Customization](docs/TEMPLATES.md) — customize your invoice PDF design
+- [API Documentation](docs/API.md) — complete Tauri command reference (61 commands)
+- [PDF Rendering](docs/TEMPLATES.md) — invoice PDF/preview rendering notes
 - [Internationalization Guide](docs/I18N.md) — add languages, RTL support
 - [Deployment Guide](docs/DEPLOYMENT.md) — build and distribute for all platforms
 - [Release Runbook](docs/RELEASE.md) — tagged release flow, artifacts, and checklist

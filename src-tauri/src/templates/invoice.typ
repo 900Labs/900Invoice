@@ -1,8 +1,11 @@
 // 900Invoice — Professional Invoice Template
 // Version: 1.0
 //
-// This template is designed to be compiled via typst-bake at build time,
-// embedding the compiled binary into the Rust application.
+// Historical Typst prototype template.
+//
+// The application currently exports PDFs through the native Rust renderer in
+// src-tauri/src/services/pdf_engine.rs. This file is retained as design
+// reference material only and is not wired into the runtime PDF command.
 //
 // Data is passed as a JSON file (invoice-data.json) whose schema matches
 // the get_preview_data() output from pdf_engine.rs.

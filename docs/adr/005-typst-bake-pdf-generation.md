@@ -1,8 +1,14 @@
 # ADR 005: typst-bake for PDF Generation
 
-## Status: Accepted
+## Status: Superseded
 
 ## Date: 2026-03-01
+
+## Superseded By
+
+Sprint 031 replaced the unimplemented `typst-bake` path with the current dependency-free Rust PDF/HTML renderer in `src-tauri/src/services/pdf_engine.rs`.
+
+The historical decision below is retained for context. It should not be read as the current implementation.
 
 ## Context
 

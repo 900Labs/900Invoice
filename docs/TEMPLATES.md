@@ -1,254 +1,95 @@
-# Invoice Template Customization
+# PDF Rendering
 
-900Invoice generates professional PDF invoices using [Typst](https://typst.app) via the `typst-bake` engine. The invoice template is a Typst source file that you can customize to match your brand.
+900Invoice renders invoices through `src-tauri/src/services/pdf_engine.rs`.
 
----
+The engine has three public surfaces:
 
-## Template Location
+1. `generate_invoice_html(...)` builds the rich HTML invoice used for WebView preview and browser print workflows.
+2. `get_preview_data(...)` returns structured JSON for frontend preview components.
+3. `generate_invoice_pdf_bytes(...)` builds a self-contained PDF document for native file export.
 
-The invoice template is located at:
-
-```
-src-tauri/src/templates/invoice.typ
-```
-
-This file is embedded into the binary at compile time using `include_str!()` in Rust. To apply your customizations, you must rebuild the application:
-
-```bash
-cargo tauri build
-```
-
-For development, run `cargo tauri dev` — template changes will trigger a Rust recompile and the updated template will be used for all subsequent PDF generation.
+The current PDF export path is dependency-free: it writes PDF objects directly from the invoice data and uses built-in PDF fonts. This keeps offline export available without shipping an external browser, PDF converter, or typesetting binary.
 
 ---
 
-## Template Variables
+## User Flow
 
-The Rust backend substitutes the following variables into the template before compiling it with Typst. All variable names use double curly braces: `{{variable_name}}`.
+1. The user opens an invoice preview.
+2. The preview modal renders invoice data from the frontend store.
+3. Clicking **Download** opens a native save dialog.
+4. The frontend invokes `generate_invoice_pdf`.
+5. Rust loads the invoice with client, line items, tax rows, and payments.
+6. Rust returns base64-encoded PDF bytes.
+7. The frontend decodes the bytes and writes the selected `.pdf` file through the Tauri filesystem plugin.
 
-### Business Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `{{business_name}}` | string | Your company/business name |
-| `{{business_address}}` | string | Business street address |
-| `{{business_city}}` | string | City, state/province |
-| `{{business_country}}` | string | Country name |
-| `{{business_tax_id}}` | string | VAT/GST/tax registration number |
-| `{{business_email}}` | string | Business email address |
-| `{{business_phone}}` | string | Business phone number |
-| `{{business_website}}` | string | Website URL |
-| `{{business_logo_path}}` | string | Absolute path to logo image file |
-| `{{business_has_logo}}` | bool | `true` if a logo is configured |
-
-### Invoice Header Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `{{invoice_number}}` | string | Invoice number (e.g., `INV-2026-0042`) |
-| `{{invoice_status}}` | string | Status label (`DRAFT`, `FINALIZED`, etc.) |
-| `{{invoice_date}}` | string | Issue date (formatted for locale) |
-| `{{invoice_due_date}}` | string | Due date, or empty string if not set |
-| `{{invoice_currency}}` | string | ISO 4217 currency code |
-| `{{invoice_notes}}` | string | Additional notes |
-| `{{invoice_terms}}` | string | Payment terms text |
-
-### Client Variables
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `{{client_name}}` | string | Client name or company name |
-| `{{client_address}}` | string | Client street address |
-| `{{client_city}}` | string | Client city |
-| `{{client_country}}` | string | Client country name |
-| `{{client_tax_id}}` | string | Client's VAT/tax number |
-| `{{client_email}}` | string | Client email address |
-
-### Totals
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `{{subtotal}}` | string | Formatted subtotal (e.g., `KES 10,000.00`) |
-| `{{tax_lines}}` | string | Rendered tax breakdown (Typst markup) |
-| `{{total}}` | string | Formatted grand total |
-| `{{amount_paid}}` | string | Formatted total payments received |
-| `{{amount_due}}` | string | Formatted balance due |
-
-### Line Items Table
-
-The line items table is rendered as a Typst `table()` block and substituted as `{{line_items_table}}`. Each row contains:
-- Description
-- Quantity
-- Unit price (formatted)
-- Line total (formatted)
-
-If you need to change the table column layout, you will need to modify the template rendering logic in `src-tauri/src/services/pdf.rs` as well as the template.
+The **Print** button remains available and uses the WebView/browser print path.
 
 ---
 
-## Changing Branding and Colors
+## Rendered Data
 
-The template uses Typst's variable and function system. Here is a minimal example showing how to change the accent color and header layout:
+The PDF renderer includes:
 
-```typst
-// Define your brand colors at the top of the file
-#let accent-color = rgb("#1a56db")     // Change to your brand color
-#let text-color = rgb("#111827")
-#let muted-color = rgb("#6b7280")
-#let border-color = rgb("#e5e7eb")
+| Section | Source |
+|---|---|
+| Business name and contact details | `BusinessProfile` |
+| Invoice number, issue date, due date, status | `InvoiceWithDetails` |
+| Client name and contact details | `InvoiceWithDetails.client` |
+| Line item description, quantity, unit price, tax, and amount | `InvoiceWithDetails.line_items` |
+| Discounts, tax rows, total, paid amount, and balance | Invoice totals and `InvoiceWithDetails.taxes` |
+| Bank and mobile money payment details | `BusinessProfile` |
+| Notes, terms, and footer | Invoice text fields |
 
-// Use them throughout the template
-#set text(font: "Helvetica Neue", fill: text-color)
-
-// Header with logo
-#block(
-  fill: accent-color,
-  width: 100%,
-  inset: (x: 24pt, y: 16pt),
-)[
-  #text(fill: white, size: 20pt, weight: "bold")[{{business_name}}]
-]
-```
-
-### Supported Fonts
-
-Typst can use fonts that are installed on your system. To use a custom font:
-
-1. Install the font on your system (Windows: double-click the .ttf/.otf file; macOS: Font Book; Linux: copy to `~/.local/share/fonts/`)
-2. Reference it in the template: `#set text(font: "Your Font Name")`
-3. Rebuild the application
-
-For distribution, be aware that users must also have the font installed, or you must bundle the font file and load it explicitly.
+Money is formatted from integer minor units. The native PDF uses ISO currency codes for maximum compatibility with built-in PDF fonts; the HTML preview can use richer currency symbols.
 
 ---
 
-## Paper Size Configuration
+## Customization
 
-Change the paper size at the top of the template:
+Invoice rendering is code-driven today. To customize the invoice design, update:
 
-```typst
-// A4 (international standard — recommended)
-#set page(paper: "a4", margin: (x: 2.5cm, y: 2cm))
+- `generate_invoice_html(...)` for the WebView preview and print styling.
+- `generate_invoice_pdf_bytes(...)` and `PdfRenderer` for exported PDF layout.
+- `get_preview_data(...)` when the frontend needs additional structured fields.
 
-// US Letter (North America)
-#set page(paper: "us-letter", margin: (x: 1in, y: 0.75in))
+Common changes:
 
-// A5 (compact)
-#set page(paper: "a5", margin: (x: 1.5cm, y: 1.5cm))
-```
-
-Typst supports all standard paper sizes. See the [Typst page documentation](https://typst.app/docs/reference/layout/page/) for the full list.
+| Change | Where |
+|---|---|
+| Accent color | `PdfRenderer::draw_header`, `draw_table_header`, and HTML CSS variables in `generate_invoice_html` |
+| Table columns | `PdfRenderer::columns`, `draw_table_header`, `draw_item_row`, and the HTML item table |
+| Business/payment fields | `draw_header`, `draw_payment_details`, and `build_payment_html` |
+| Notes/terms layout | `draw_text_section` and the HTML notes/terms blocks |
+| Paper size behavior | `generate_invoice_pdf_bytes` and `generate_invoice_html` paper-size branches |
 
 ---
 
 ## Adding Custom Fields
 
-If you need to add custom fields to the invoice (e.g., purchase order number, project code, bank account details), you have two options:
+For simple one-off content, use invoice notes, terms, or footer. These fields are persisted and rendered in both the preview and PDF export.
 
-### Option 1: Use the Notes and Terms Fields
+For structured fields such as purchase order number or project code:
 
-The simplest approach. The `notes` and `terms` fields on each invoice support multi-line text and are displayed in the PDF. Use them for:
-- Bank account details for payment
-- Purchase order references
-- Project codes
-- Custom disclaimers
-
-### Option 2: Add a Database Field and Template Variable
-
-For fields that should be structured and queryable:
-
-1. **Add a column to the database schema** in `src-tauri/src/db/schema.rs`:
-   ```sql
-   ALTER TABLE invoices ADD COLUMN po_number TEXT;
-   ```
-
-2. **Add a migration** in `src-tauri/src/db/migrations.rs` with the next version number.
-
-3. **Update the `Invoice` model** in `src-tauri/src/models/invoice.rs` to include the field.
-
-4. **Update the `CreateInvoiceInput`** struct and the `create_invoice` command to accept the new field.
-
-5. **Add the template variable** in `src-tauri/src/services/pdf.rs`:
-   ```rust
-   template = template.replace("{{po_number}}", &invoice.po_number.unwrap_or_default());
-   ```
-
-6. **Add to the template** in `invoice.typ`:
-   ```typst
-   #if "{{po_number}}" != "" [
-     *PO Number:* {{po_number}}
-   ]
-   ```
-
-7. **Update the frontend** to include the field in the invoice form.
+1. Add the database column in a migration.
+2. Update the relevant Rust model in `src-tauri/src/models/`.
+3. Update create/update commands and frontend store adapters.
+4. Render the field in `generate_invoice_html(...)`.
+5. Render the field in `PdfRenderer`.
+6. Add regression coverage for the new field when it affects exported output.
 
 ---
 
-## Example: Minimal Template
+## Testing
 
-Here is a minimal working template as a starting point for heavy customization:
+Use the normal quality gate after changing rendering:
 
-```typst
-#set page(paper: "a4", margin: (x: 2.5cm, y: 2cm))
-#set text(font: "Helvetica Neue", size: 10pt, fill: rgb("#111827"))
-
-// Header
-= INVOICE
-
-*{{business_name}}*
-{{business_address}}, {{business_city}}
-
----
-
-#grid(
-  columns: (1fr, 1fr),
-  [
-    *Bill To:*
-    {{client_name}}
-    {{client_address}}
-    {{client_city}}
-  ],
-  [
-    *Invoice:* {{invoice_number}} \
-    *Date:* {{invoice_date}} \
-    *Due:* {{invoice_due_date}}
-  ]
-)
-
----
-
-{{line_items_table}}
-
----
-
-#align(right)[
-  *Subtotal:* {{subtotal}} \
-  {{tax_lines}}
-  *Total:* {{total}} \
-  *Amount Due:* {{amount_due}}
-]
-
-#if "{{invoice_notes}}" != "" [
-  ---
-  *Notes:* {{invoice_notes}}
-]
+```bash
+npm run check
+npm run build
+CARGO_TARGET_DIR=/tmp/900invoice-target-check cargo test --manifest-path src-tauri/Cargo.toml
+CARGO_TARGET_DIR=/tmp/900invoice-target-check cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
 ```
 
----
+The Rust PDF tests assert that native export returns a real `%PDF-1.4` document, includes invoice content, escapes PDF literal strings, and does not return the old HTML payload.
 
-## Testing Your Template
-
-After editing `invoice.typ`, test it by:
-
-1. Running `cargo tauri dev`
-2. Opening a finalized invoice in the application
-3. Clicking "Generate PDF" / "Preview PDF"
-4. The PDF will open in your system's PDF viewer
-
-If there is a Typst syntax error, the error message will be displayed in the application's error notification and logged to the console.
-
----
-
-## Contributing Templates
-
-If you create a template suited for a specific region or industry (e.g., a template compliant with Nigerian FIRS invoice requirements, or a template with MPESA payment QR code), please consider contributing it to the project. Place additional templates in `src-tauri/src/templates/` with descriptive names (e.g., `invoice-ng-firs.typ`) and open a PR.
+When changing layout, also test manually from the invoice preview modal by saving a PDF and opening it in the system viewer.
