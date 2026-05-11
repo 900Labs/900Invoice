@@ -79,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reworded README and Tauri ADR shell claims to avoid unmeasured binary/RAM promises, mark updater delivery as future work, and point command registration docs to `src-tauri/src/lib.rs`.
 - Corrected the README tax engine country list by removing the unseeded Senegal pre-configured tax-rate claim.
 - Corrected the i18n contributor guide to reference the current `i18nStore.ts` registry, nested JSON shape, `t()` helper, and RTL setup path.
+- Wrapped invoice finalization numbering in one SQLite transaction and updated the numbering ADR to describe the current `invoice_sequences` implementation.
 - Preserved product catalog default tax-rate identity so quick-invoiced line items keep the selected tax type when multiple active rates share the same percentage.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.

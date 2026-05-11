@@ -27,52 +27,70 @@ This creates specific technical requirements:
 2. Not sequential: No audit trail of order
 3. Not auditable: Cannot easily determine if there are gaps
 
-### The Sequence Counter Approach
+### The Invoice Sequence Approach
 
-A dedicated `sequence_counters` table maintains the last-issued sequence number. Invoice numbers are assigned within a database transaction that:
+A dedicated `invoice_sequences` table maintains configurable sequence settings and the next number to issue. Invoice numbers are assigned within a `BEGIN IMMEDIATE` SQLite transaction that:
 
-1. `SELECT counter FROM sequence_counters WHERE prefix = ?` (with `FOR UPDATE` semantics via SQLite's exclusive transaction)
-2. `UPDATE sequence_counters SET counter = counter + 1 WHERE prefix = ?`
-3. Formats the number: `{prefix}-{year}-{zero_padded_counter}`
-4. Inserts the invoice with the formatted number
+1. `SELECT`s the sequence row by `sequence_name`
+2. Determines the effective next number, resetting to `1` when yearly reset is enabled and the year changed
+3. Formats the number from `prefix`, `separator`, optional year, and zero-padded counter
+4. Advances `next_number` and `last_year`
+5. Writes the formatted number to `invoices.invoice_number`
+6. Recalculates totals, ensures an exchange-rate snapshot, and marks the invoice finalized
 
-Because this happens inside a SQLite EXCLUSIVE transaction, the counter increment and invoice insert are atomic. In SQLite's serialized concurrency model (single writer at a time), there is no possibility of duplicate or skipped numbers.
+Because finalization now keeps sequence advancement and invoice finalization in the same SQLite write transaction, the counter increment and invoice update commit or roll back together. In SQLite's serialized concurrency model (single writer at a time), there is no possibility of duplicate numbers.
 
 ## Decision
 
-Use a **sequence counter table** (`sequence_counters`) to generate gap-free invoice numbers. Numbers are assigned at `finalize_invoice()` time, not at `create_invoice()` time.
+Use a configurable **invoice sequence table** (`invoice_sequences`) to generate gap-free invoice numbers. Numbers are assigned at `finalize_invoice()` time, not at `create_invoice()` time.
 
-**Number format:** `{PREFIX}-{YEAR}-{COUNTER}`
+**Default number format:** `{PREFIX}-{YEAR}-{COUNTER}`
 
 Default: `INV-2026-0001` (configurable via Settings)
 
-- `PREFIX`: 1–5 uppercase letters, configurable per business (default `INV`)
-- `YEAR`: 4-digit calendar year of finalization
-- `COUNTER`: Zero-padded to 4 digits within the year, resets to 0001 on new year
+- `PREFIX`: configurable sequence prefix (default `INV`)
+- `SEPARATOR`: configurable separator (default `-`)
+- `YEAR`: optional 4-digit calendar year of finalization
+- `COUNTER`: zero-padded by `pad_digits`, resets to `1` on a new year when `year_reset` is enabled
 
 **Schema:**
 ```sql
-CREATE TABLE sequence_counters (
-    prefix      TEXT NOT NULL,
-    year        INTEGER NOT NULL,
-    last_value  INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (prefix, year)
+CREATE TABLE invoice_sequences (
+    sequence_name TEXT PRIMARY KEY,
+    prefix        TEXT NOT NULL DEFAULT 'INV',
+    separator     TEXT NOT NULL DEFAULT '-',
+    include_year  INTEGER NOT NULL DEFAULT 1,
+    pad_digits    INTEGER NOT NULL DEFAULT 4,
+    year_reset    INTEGER NOT NULL DEFAULT 1,
+    last_year     INTEGER,
+    last_month    INTEGER,
+    next_number   INTEGER NOT NULL DEFAULT 1,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 
 **Finalization procedure (pseudocode):**
 ```
-BEGIN EXCLUSIVE TRANSACTION;
-  SELECT last_value FROM sequence_counters WHERE prefix = ? AND year = ?;
-  IF NOT FOUND:
-    INSERT INTO sequence_counters (prefix, year, last_value) VALUES (?, ?, 0);
-    next_value = 1;
-  ELSE:
-    next_value = last_value + 1;
-    UPDATE sequence_counters SET last_value = next_value WHERE prefix = ? AND year = ?;
-  
-  formatted_number = format!("{}-{}-{:04}", prefix, year, next_value);
-  UPDATE invoices SET number = formatted_number, status = 'finalized' WHERE id = ?;
+BEGIN IMMEDIATE;
+  invoice = SELECT * FROM invoices WHERE id = ?;
+  IF invoice.status != 'draft':
+    ROLLBACK;
+
+  IF invoice.invoice_number IS NULL:
+    sequence = SELECT * FROM invoice_sequences WHERE sequence_name = 'default';
+    next_value = sequence.next_number;
+    IF sequence.year_reset AND sequence.last_year != current_year:
+      next_value = 1;
+
+    formatted_number = format(prefix, separator, include_year, current_year, next_value, pad_digits);
+    UPDATE invoice_sequences
+      SET next_number = next_value + 1, last_year = current_year
+      WHERE sequence_name = 'default';
+    UPDATE invoices SET invoice_number = formatted_number WHERE id = ?;
+
+  recalculate invoice totals and tax rows;
+  ensure exchange-rate snapshot;
+  UPDATE invoices SET status = 'finalized', finalized_at = datetime('now') WHERE id = ?;
 COMMIT;
 ```
 
@@ -92,7 +110,7 @@ COMMIT;
 
 ### Notes for Contributors
 
-The sequence logic lives in `src-tauri/src/services/numbering.rs`. Tests must verify:
+The sequence logic lives in `src-tauri/src/services/invoice_numbering.rs`. Tests must verify:
 - Concurrent finalization (even though SQLite serializes writes, tests should confirm atomicity)
 - Year rollover (Dec 31 → Jan 1)
 - Custom prefix configuration
