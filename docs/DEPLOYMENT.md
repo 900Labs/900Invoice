@@ -112,7 +112,7 @@ chmod +x 900invoice_1.0.0_amd64.AppImage
 sudo dpkg -i 900invoice_1.0.0_amd64.deb
 ```
 
-**Data location on Linux**: `~/.local/share/900invoice/900invoice.db`
+**Data location on Linux**: `~/.local/share/com.900labs.invoice/900invoice.db`
 
 **System WebKit requirement**: Tauri v2 requires `webkit2gtk-4.1` on Linux. Most modern distributions include this. Ubuntu 22.04+ and Fedora 38+ have it by default.
 
@@ -144,7 +144,7 @@ For production releases, code signing is strongly recommended (see below).
 
 ### Windows
 
-**Data location on Windows**: `%APPDATA%\900invoice\900invoice.db` (e.g., `C:\Users\Alice\AppData\Roaming\900invoice\`)
+**Data location on Windows**: `%APPDATA%\com.900labs.invoice\900invoice.db` (e.g., `C:\Users\Alice\AppData\Roaming\com.900labs.invoice\`)
 
 **MSI vs NSIS installer**: The MSI installer is preferred for enterprise deployment (Group Policy, SCCM). The NSIS installer (`-setup.exe`) is preferred for individual user installs.
 
@@ -352,11 +352,11 @@ Configure these in your GitHub repository Settings → Secrets and Variables →
 
 | Platform | Path |
 |----------|------|
-| Linux | `~/.local/share/900invoice/900invoice.db` |
+| Linux | `~/.local/share/com.900labs.invoice/900invoice.db` |
 | macOS | `~/Library/Application Support/com.900labs.invoice/900invoice.db` |
-| Windows | `%APPDATA%\900invoice\900invoice.db` |
+| Windows | `%APPDATA%\com.900labs.invoice\900invoice.db` |
 
-The database path is determined by Tauri's `app_data_dir()` function. Users can find it in Settings → About → Database Location.
+The database path is determined by Tauri's `app_data_dir()` function, which resolves to the platform data directory plus the bundle identifier from `src-tauri/tauri.conf.json`.
 
 ---
 
