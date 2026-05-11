@@ -7,6 +7,7 @@ pub struct Product {
     pub description: String,
     pub default_price_minor: i64,
     pub default_currency: String,
+    pub default_tax_rate_id: Option<String>,
     pub default_tax_rate_bps: i32,
     pub unit: String,
     pub is_active: bool,
@@ -20,6 +21,7 @@ pub struct CreateProduct {
     pub description: Option<String>,
     pub default_price_minor: Option<i64>,
     pub default_currency: Option<String>,
+    pub default_tax_rate_id: Option<String>,
     pub default_tax_rate_bps: Option<i32>,
     pub unit: Option<String>,
 }
@@ -30,6 +32,7 @@ pub struct UpdateProduct {
     pub description: Option<String>,
     pub default_price_minor: Option<i64>,
     pub default_currency: Option<String>,
+    pub default_tax_rate_id: Option<String>,
     pub default_tax_rate_bps: Option<i32>,
     pub unit: Option<String>,
     pub is_active: Option<bool>,

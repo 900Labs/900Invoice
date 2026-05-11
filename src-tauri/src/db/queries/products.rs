@@ -3,23 +3,24 @@ use rusqlite::{params, Connection, Result};
 use uuid::Uuid;
 
 fn row_to_product(row: &rusqlite::Row<'_>) -> Result<Product> {
-    let is_active: i32 = row.get(7)?;
+    let is_active: i32 = row.get(8)?;
     Ok(Product {
         id: row.get(0)?,
         name: row.get(1)?,
         description: row.get(2)?,
         default_price_minor: row.get(3)?,
         default_currency: row.get(4)?,
-        default_tax_rate_bps: row.get(5)?,
-        unit: row.get(6)?,
+        default_tax_rate_id: row.get(5)?,
+        default_tax_rate_bps: row.get(6)?,
+        unit: row.get(7)?,
         is_active: is_active != 0,
-        created_at: row.get(8)?,
-        updated_at: row.get(9)?,
+        created_at: row.get(9)?,
+        updated_at: row.get(10)?,
     })
 }
 
 const SELECT_COLS: &str = "id, name, description, default_price_minor, default_currency,
-     default_tax_rate_bps, unit, is_active, created_at, updated_at";
+     default_tax_rate_id, default_tax_rate_bps, unit, is_active, created_at, updated_at";
 
 pub fn list_all(conn: &Connection) -> Result<Vec<Product>> {
     let sql = format!(
@@ -42,14 +43,15 @@ pub fn insert(conn: &Connection, c: &CreateProduct) -> Result<Product> {
     let id = Uuid::new_v4().to_string();
     conn.execute(
         "INSERT INTO products (id, name, description, default_price_minor, default_currency,
-                               default_tax_rate_bps, unit)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                               default_tax_rate_id, default_tax_rate_bps, unit)
+         VALUES (?1, ?2, ?3, ?4, ?5, NULLIF(?6, ''), ?7, ?8)",
         params![
             id,
             c.name,
             c.description.as_deref().unwrap_or(""),
             c.default_price_minor.unwrap_or(0),
             c.default_currency.as_deref().unwrap_or("USD"),
+            c.default_tax_rate_id.as_deref().unwrap_or(""),
             c.default_tax_rate_bps.unwrap_or(0),
             c.unit.as_deref().unwrap_or("unit"),
         ],
@@ -80,6 +82,12 @@ pub fn update(conn: &Connection, id: &str, u: &UpdateProduct) -> Result<Product>
     if let Some(v) = &u.default_currency {
         conn.execute(
             "UPDATE products SET default_currency=?1, updated_at=datetime('now') WHERE id=?2",
+            params![v, id],
+        )?;
+    }
+    if let Some(v) = &u.default_tax_rate_id {
+        conn.execute(
+            "UPDATE products SET default_tax_rate_id=NULLIF(?1, ''), updated_at=datetime('now') WHERE id=?2",
             params![v, id],
         )?;
     }
@@ -122,4 +130,54 @@ pub fn search(conn: &Connection, query: &str) -> Result<Vec<Product>> {
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params![pattern], row_to_product)?;
     rows.collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{insert, update};
+    use crate::db::migrations;
+    use crate::models::product::{CreateProduct, UpdateProduct};
+    use rusqlite::Connection;
+
+    #[test]
+    fn insert_and_update_preserve_default_tax_rate_identity() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        migrations::run_migrations(&conn).expect("migrations");
+
+        let created = insert(
+            &conn,
+            &CreateProduct {
+                name: "Withheld service".to_string(),
+                description: Some("Advisory".to_string()),
+                default_price_minor: Some(10_000),
+                default_currency: Some("KES".to_string()),
+                default_tax_rate_id: Some("tax-ke-wht".to_string()),
+                default_tax_rate_bps: Some(500),
+                unit: Some("hour".to_string()),
+            },
+        )
+        .expect("insert product");
+
+        assert_eq!(created.default_tax_rate_id.as_deref(), Some("tax-ke-wht"));
+        assert_eq!(created.default_tax_rate_bps, 500);
+
+        let updated = update(
+            &conn,
+            &created.id,
+            &UpdateProduct {
+                name: None,
+                description: None,
+                default_price_minor: None,
+                default_currency: None,
+                default_tax_rate_id: Some(String::new()),
+                default_tax_rate_bps: Some(0),
+                unit: None,
+                is_active: None,
+            },
+        )
+        .expect("clear product tax");
+
+        assert_eq!(updated.default_tax_rate_id, None);
+        assert_eq!(updated.default_tax_rate_bps, 0);
+    }
 }

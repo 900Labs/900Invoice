@@ -36,6 +36,19 @@ fn parse_csv_line(line: &str) -> Vec<String> {
     fields
 }
 
+fn csv_field<'a>(
+    fields: &'a [String],
+    header: &[String],
+    name: &str,
+    fallback_index: Option<usize>,
+) -> Option<&'a String> {
+    header
+        .iter()
+        .position(|column| column.trim().eq_ignore_ascii_case(name))
+        .and_then(|index| fields.get(index))
+        .or_else(|| fallback_index.and_then(|index| fields.get(index)))
+}
+
 /// Escape a field for CSV output.
 fn csv_escape(s: &str) -> String {
     let sanitized = if matches!(s.chars().next(), Some('=' | '+' | '-' | '@' | '\t' | '\r')) {
@@ -126,24 +139,25 @@ fn list_products_for_backup(conn: &Connection) -> Result<Vec<Product>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT id, name, description, default_price_minor, default_currency,
-                    default_tax_rate_bps, unit, is_active, created_at, updated_at
+                    default_tax_rate_id, default_tax_rate_bps, unit, is_active, created_at, updated_at
              FROM products ORDER BY name ASC",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |row| {
-            let is_active: i32 = row.get(7)?;
+            let is_active: i32 = row.get(8)?;
             Ok(Product {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 description: row.get(2)?,
                 default_price_minor: row.get(3)?,
                 default_currency: row.get(4)?,
-                default_tax_rate_bps: row.get(5)?,
-                unit: row.get(6)?,
+                default_tax_rate_id: row.get(5)?,
+                default_tax_rate_bps: row.get(6)?,
+                unit: row.get(7)?,
                 is_active: is_active != 0,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -297,7 +311,7 @@ fn list_invoice_sequences_for_backup(
 
 fn import_products_csv_content(conn: &Connection, csv_content: &str) -> Result<Value, String> {
     let mut lines = csv_content.lines();
-    let _header = lines.next();
+    let header = lines.next().map(parse_csv_line).unwrap_or_default();
 
     let mut imported = 0usize;
     let mut errors: Vec<String> = Vec::new();
@@ -309,20 +323,23 @@ fn import_products_csv_content(conn: &Connection, csv_content: &str) -> Result<V
 
         let fields = parse_csv_line(line);
         let row = i + 2;
-        let name = fields.first().cloned().unwrap_or_default();
+        let name = csv_field(&fields, &header, "name", Some(0))
+            .cloned()
+            .unwrap_or_default();
         if name.is_empty() {
             errors.push(format!("Row {}: missing name", row));
             continue;
         }
 
-        let default_currency = fields
-            .get(3)
+        let default_currency = csv_field(&fields, &header, "default_currency", Some(3))
             .map(|s| s.trim().to_ascii_uppercase())
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "USD".to_string());
 
         let default_price_minor = match parse_price_minor(
-            fields.get(2).map(String::as_str).unwrap_or(""),
+            csv_field(&fields, &header, "default_price", Some(2))
+                .map(String::as_str)
+                .unwrap_or(""),
             &default_currency,
         ) {
             Ok(amount) => amount,
@@ -332,21 +349,29 @@ fn import_products_csv_content(conn: &Connection, csv_content: &str) -> Result<V
             }
         };
 
-        let default_tax_rate_bps = match fields.get(4).filter(|s| !s.trim().is_empty()) {
-            Some(value) => match value.trim().parse::<i32>() {
-                Ok(rate) if rate >= 0 => rate,
-                _ => {
-                    errors.push(format!(
-                        "Row {}: invalid default_tax_rate_bps '{}'",
-                        row, value
-                    ));
-                    continue;
-                }
-            },
-            None => 0,
-        };
+        let default_tax_rate_bps =
+            match csv_field(&fields, &header, "default_tax_rate_bps", Some(4))
+                .filter(|s| !s.trim().is_empty())
+            {
+                Some(value) => match value.trim().parse::<i32>() {
+                    Ok(rate) if rate >= 0 => rate,
+                    _ => {
+                        errors.push(format!(
+                            "Row {}: invalid default_tax_rate_bps '{}'",
+                            row, value
+                        ));
+                        continue;
+                    }
+                },
+                None => 0,
+            };
+        let default_tax_rate_id = csv_field(&fields, &header, "default_tax_rate_id", None)
+            .cloned()
+            .filter(|s| !s.trim().is_empty());
 
-        let is_active = match fields.get(6).filter(|s| !s.trim().is_empty()) {
+        let is_active = match csv_field(&fields, &header, "is_active", Some(6))
+            .filter(|s| !s.trim().is_empty())
+        {
             Some(value) => match parse_bool_field(value) {
                 Some(parsed) => parsed,
                 None => {
@@ -359,11 +384,16 @@ fn import_products_csv_content(conn: &Connection, csv_content: &str) -> Result<V
 
         let product = CreateProduct {
             name,
-            description: fields.get(1).cloned().filter(|s| !s.is_empty()),
+            description: csv_field(&fields, &header, "description", Some(1))
+                .cloned()
+                .filter(|s| !s.is_empty()),
             default_price_minor: Some(default_price_minor),
             default_currency: Some(default_currency),
+            default_tax_rate_id,
             default_tax_rate_bps: Some(default_tax_rate_bps),
-            unit: fields.get(5).cloned().filter(|s| !s.is_empty()),
+            unit: csv_field(&fields, &header, "unit", Some(5))
+                .cloned()
+                .filter(|s| !s.is_empty()),
         };
 
         match db::queries::products::insert(conn, &product) {
@@ -374,6 +404,7 @@ fn import_products_csv_content(conn: &Connection, csv_content: &str) -> Result<V
                         description: None,
                         default_price_minor: None,
                         default_currency: None,
+                        default_tax_rate_id: None,
                         default_tax_rate_bps: None,
                         unit: None,
                         is_active: Some(false),
@@ -398,7 +429,7 @@ fn import_products_csv_content(conn: &Connection, csv_content: &str) -> Result<V
 fn export_products_csv_content(conn: &Connection) -> Result<String, String> {
     let products = list_products_for_backup(conn)?;
     let mut out = String::from(
-        "name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active\n",
+        "name,description,default_price,default_currency,default_tax_rate_bps,default_tax_rate_id,unit,is_active\n",
     );
 
     for product in &products {
@@ -408,6 +439,7 @@ fn export_products_csv_content(conn: &Connection) -> Result<String, String> {
             format_price_major(product.default_price_minor, &product.default_currency),
             csv_escape(&product.default_currency),
             product.default_tax_rate_bps.to_string(),
+            csv_escape(product.default_tax_rate_id.as_deref().unwrap_or("")),
             csv_escape(&product.unit),
             product.is_active.to_string(),
         ];
@@ -501,7 +533,7 @@ pub fn export_clients_csv(db: State<'_, DbConn>) -> Result<String, String> {
 }
 
 /// Import products from a CSV string.
-/// Expected header: name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active
+/// Expected header: name,description,default_price,default_currency,default_tax_rate_bps,default_tax_rate_id,unit,is_active
 #[tauri::command]
 pub fn import_products_csv(
     db: State<'_, DbConn>,
@@ -735,14 +767,15 @@ fn restore_backup(conn: &Connection, backup: Value) -> Result<Value, String> {
                 .execute(
                     "INSERT OR IGNORE INTO products
                      (id, name, description, default_price_minor, default_currency,
-                      default_tax_rate_bps, unit, is_active, created_at, updated_at)
-                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+                      default_tax_rate_id, default_tax_rate_bps, unit, is_active, created_at, updated_at)
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
                     rusqlite::params![
                         product.id,
                         product.name,
                         product.description,
                         product.default_price_minor,
                         product.default_currency,
+                        product.default_tax_rate_id,
                         product.default_tax_rate_bps,
                         product.unit,
                         bool_to_int(product.is_active),
@@ -1038,11 +1071,11 @@ mod tests {
     fn import_products_csv_content_imports_products_and_active_flag() {
         let conn = test_conn();
         let csv = concat!(
-            "name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active\n",
-            "Consulting,\"Senior advisory\",125.50,USD,1600,hour,true\n",
-            "Legacy license,,2500,UGX,0,seat,false\n",
-            ",Missing name,10,USD,0,unit,true\n",
-            "Broken price,,abc,USD,0,unit,true\n"
+            "name,description,default_price,default_currency,default_tax_rate_bps,default_tax_rate_id,unit,is_active\n",
+            "Consulting,\"Senior advisory\",125.50,USD,1600,tax-ke-vat,hour,true\n",
+            "Legacy license,,2500,UGX,0,,seat,false\n",
+            ",Missing name,10,USD,0,,unit,true\n",
+            "Broken price,,abc,USD,0,,unit,true\n"
         );
 
         let result = import_products_csv_content(&conn, csv).expect("import products");
@@ -1057,6 +1090,10 @@ mod tests {
             .expect("consulting product");
         assert_eq!(consulting.default_price_minor, 12_550);
         assert_eq!(consulting.default_currency, "USD");
+        assert_eq!(
+            consulting.default_tax_rate_id.as_deref(),
+            Some("tax-ke-vat")
+        );
         assert_eq!(consulting.default_tax_rate_bps, 1600);
         assert!(consulting.is_active);
 
@@ -1070,6 +1107,30 @@ mod tests {
     }
 
     #[test]
+    fn import_products_csv_content_accepts_legacy_tax_rate_header() {
+        let conn = test_conn();
+        let csv = concat!(
+            "name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active\n",
+            "Legacy service,,12.50,USD,500,hour,true\n"
+        );
+
+        let result = import_products_csv_content(&conn, csv).expect("import legacy products");
+
+        assert_eq!(result["imported"], 1);
+        assert!(result["errors"].as_array().expect("errors").is_empty());
+
+        let products = super::list_products_for_backup(&conn).expect("products");
+        let legacy = products
+            .iter()
+            .find(|p| p.name == "Legacy service")
+            .expect("legacy product");
+        assert_eq!(legacy.default_tax_rate_id, None);
+        assert_eq!(legacy.default_tax_rate_bps, 500);
+        assert_eq!(legacy.unit, "hour");
+        assert!(legacy.is_active);
+    }
+
+    #[test]
     fn export_products_csv_content_exports_all_products_safely() {
         let conn = test_conn();
         let product = CreateProduct {
@@ -1077,6 +1138,7 @@ mod tests {
             description: Some("Plan, quoted".to_string()),
             default_price_minor: Some(19_995),
             default_currency: Some("USD".to_string()),
+            default_tax_rate_id: Some("tax-custom-750".to_string()),
             default_tax_rate_bps: Some(750),
             unit: Some("seat".to_string()),
         };
@@ -1090,6 +1152,7 @@ mod tests {
                 description: None,
                 default_price_minor: None,
                 default_currency: None,
+                default_tax_rate_id: None,
                 default_tax_rate_bps: None,
                 unit: None,
                 is_active: Some(false),
@@ -1100,11 +1163,11 @@ mod tests {
         let csv = export_products_csv_content(&conn).expect("export products");
 
         assert!(csv.starts_with(
-            "name,description,default_price,default_currency,default_tax_rate_bps,unit,is_active\n"
+            "name,description,default_price,default_currency,default_tax_rate_bps,default_tax_rate_id,unit,is_active\n"
         ));
         assert!(csv.contains("'=SUM(A1:A2)"));
         assert!(csv.contains("\"Plan, quoted\""));
-        assert!(csv.contains(",199.95,USD,750,seat,false\n"));
+        assert!(csv.contains(",199.95,USD,750,tax-custom-750,seat,false\n"));
     }
 
     #[test]
@@ -1137,6 +1200,7 @@ mod tests {
                 "description": "",
                 "default_price_minor": 10000,
                 "default_currency": "USD",
+                "default_tax_rate_id": "tax-custom",
                 "default_tax_rate_bps": 1600,
                 "unit": "hour",
                 "is_active": true,
@@ -1266,6 +1330,15 @@ mod tests {
         assert_eq!(table_count(&conn, "invoice_line_items"), 1);
         assert_eq!(table_count(&conn, "invoice_taxes"), 1);
         assert_eq!(table_count(&conn, "payments"), 1);
+
+        let product_tax_rate_id: Option<String> = conn
+            .query_row(
+                "SELECT default_tax_rate_id FROM products WHERE id='product-1'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("restored product tax identity");
+        assert_eq!(product_tax_rate_id.as_deref(), Some("tax-custom"));
 
         let duplicate = restore_backup(&conn, backup).expect("duplicate restore");
         assert_eq!(duplicate["restored"]["clients"], 0);
