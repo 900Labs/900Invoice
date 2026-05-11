@@ -8,6 +8,7 @@ interface BackendProduct {
   description: string;
   default_price_minor: number;
   default_currency: string;
+  default_tax_rate_id: string | null;
   default_tax_rate_bps: number;
   unit: string;
   is_active: boolean;
@@ -55,7 +56,7 @@ function mapProduct(product: BackendProduct): Product {
     description: product.description,
     defaultPriceMinor: product.default_price_minor,
     currencyCode: product.default_currency,
-    taxRateId: taxRateIdForBps(product.default_tax_rate_bps),
+    taxRateId: product.default_tax_rate_id ?? taxRateIdForBps(product.default_tax_rate_bps),
     taxRateBps: product.default_tax_rate_bps,
     unit: product.unit,
     isActive: product.is_active,
@@ -70,6 +71,7 @@ function toBackendProduct(data: Partial<CreateProduct>) {
     ...(data.description !== undefined ? { description: data.description } : {}),
     ...(data.defaultPriceMinor !== undefined ? { default_price_minor: data.defaultPriceMinor } : {}),
     ...(data.currencyCode !== undefined ? { default_currency: data.currencyCode } : {}),
+    ...(data.taxRateId !== undefined ? { default_tax_rate_id: data.taxRateId ?? '' } : {}),
     ...(defaultTaxRateBps !== undefined ? { default_tax_rate_bps: defaultTaxRateBps } : {}),
     ...(data.unit !== undefined ? { unit: data.unit } : {}),
     ...(data.isActive !== undefined ? { is_active: data.isActive } : {}),

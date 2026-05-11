@@ -69,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Applied saved paper size, locale, and date-format settings to native PDF export and PDF preview data.
 - Aligned README installation guidance with the current source-archive release workflow instead of advertising unpublished platform installers.
 - Corrected source-build setup docs for the cloned `900Invoice` directory name and required Tauri CLI.
+- Preserved product catalog default tax-rate identity so quick-invoiced line items keep the selected tax type when multiple active rates share the same percentage.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.
 - Enabled recurring due processing on app startup and an hourly in-process worker for missed-job recovery while the app is open.

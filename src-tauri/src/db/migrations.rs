@@ -193,6 +193,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             description TEXT NOT NULL DEFAULT '',
             default_price_minor INTEGER NOT NULL DEFAULT 0,
             default_currency TEXT NOT NULL DEFAULT 'USD',
+            default_tax_rate_id TEXT,
             default_tax_rate_bps INTEGER NOT NULL DEFAULT 0,
             unit TEXT NOT NULL DEFAULT 'unit',
             is_active INTEGER NOT NULL DEFAULT 1,
@@ -221,6 +222,12 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     if !column_exists(conn, "invoice_line_items", "tax_rate_id")? {
         conn.execute(
             "ALTER TABLE invoice_line_items ADD COLUMN tax_rate_id TEXT",
+            [],
+        )?;
+    }
+    if !column_exists(conn, "products", "default_tax_rate_id")? {
+        conn.execute(
+            "ALTER TABLE products ADD COLUMN default_tax_rate_id TEXT",
             [],
         )?;
     }
@@ -270,7 +277,7 @@ mod tests {
     use rusqlite::Connection;
 
     #[test]
-    fn migrations_seed_withholding_rates_and_line_item_tax_rate_id() {
+    fn migrations_seed_withholding_rates_and_tax_identity_columns() {
         let conn = Connection::open_in_memory().expect("in-memory db");
         run_migrations(&conn).expect("migrations");
 
@@ -282,6 +289,15 @@ mod tests {
             )
             .expect("tax_rate_id column");
         assert_eq!(tax_rate_id_exists, 1);
+
+        let product_tax_rate_id_exists: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('products') WHERE name='default_tax_rate_id'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("product default_tax_rate_id column");
+        assert_eq!(product_tax_rate_id_exists, 1);
 
         let withholding_count: i64 = conn
             .query_row(
