@@ -8,6 +8,7 @@
   import LoadingSpinner from '../shared/LoadingSpinner.svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { getClients } from '../../stores/clientStore';
+  import { loadInvoices } from '../../stores/invoiceStore';
   import { formatDate } from '../../utils/date';
   import { t } from '../../stores/i18nStore';
   import { getSettings } from '../../stores/settingsStore';
@@ -93,6 +94,8 @@
   async function handleGenerateNow() {
     try {
       await invoke('generate_due_recurring');
+      await loadSchedules();
+      await loadInvoices();
       success(t('common.success'));
     } catch (e) {
       toastError(String(e));
