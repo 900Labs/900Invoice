@@ -715,6 +715,809 @@ fn build_payment_html(business: &BusinessProfile) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// Native PDF generation
+// ---------------------------------------------------------------------------
+
+/// Generate a self-contained PDF invoice.
+///
+/// The HTML renderer remains the rich preview surface; this renderer emits
+/// portable PDF bytes for native file export without external binaries.
+pub fn generate_invoice_pdf_bytes(
+    invoice: &InvoiceWithDetails,
+    business: &BusinessProfile,
+    paper_size: &str,
+    _locale: &str,
+) -> Vec<u8> {
+    let (page_width, page_height) = match paper_size.to_lowercase().as_str() {
+        "letter" => (612.0, 792.0),
+        _ => (595.0, 842.0),
+    };
+
+    let mut renderer = PdfRenderer::new(page_width, page_height);
+    renderer.draw_invoice(invoice, business);
+    renderer.finish()
+}
+
+struct PdfRenderer {
+    width: f32,
+    height: f32,
+    margin: f32,
+    y: f32,
+    pages: Vec<String>,
+    canvas: PdfCanvas,
+}
+
+impl PdfRenderer {
+    fn new(width: f32, height: f32) -> Self {
+        let margin = 40.0;
+        Self {
+            width,
+            height,
+            margin,
+            y: height - margin,
+            pages: Vec::new(),
+            canvas: PdfCanvas::new(),
+        }
+    }
+
+    fn draw_invoice(&mut self, invoice: &InvoiceWithDetails, business: &BusinessProfile) {
+        self.draw_header(invoice, business);
+        self.draw_bill_to(invoice);
+        self.draw_line_items(invoice);
+        self.draw_totals(invoice);
+        self.draw_payment_details(business);
+        self.draw_text_section("Notes", &invoice.notes);
+        self.draw_text_section("Terms", &invoice.terms);
+        if !invoice.footer.trim().is_empty() {
+            self.draw_text_section("", &invoice.footer);
+        }
+    }
+
+    fn finish(mut self) -> Vec<u8> {
+        self.draw_footer();
+        self.push_page();
+        build_pdf_document(&self.pages, self.width, self.height)
+    }
+
+    fn push_page(&mut self) {
+        let content = std::mem::take(&mut self.canvas.content);
+        if !content.trim().is_empty() {
+            self.pages.push(content);
+        }
+    }
+
+    fn new_page(&mut self) {
+        self.draw_footer();
+        self.push_page();
+        self.canvas = PdfCanvas::new();
+        self.y = self.height - self.margin;
+    }
+
+    fn ensure_space(&mut self, required_height: f32) {
+        if self.y - required_height < self.margin + 24.0 {
+            self.new_page();
+        }
+    }
+
+    fn draw_header(&mut self, invoice: &InvoiceWithDetails, business: &BusinessProfile) {
+        let teal = (0.125, 0.502, 0.553);
+        let dark = (0.10, 0.10, 0.10);
+        let muted = (0.34, 0.34, 0.34);
+        let inv_num = invoice.invoice_number.as_deref().unwrap_or("DRAFT");
+        let business_name = if business.name.trim().is_empty() {
+            "900Invoice"
+        } else {
+            business.name.as_str()
+        };
+
+        self.canvas
+            .text(self.margin, self.y, 18.0, business_name, "F2", teal);
+
+        let mut left_y = self.y - 18.0;
+        for line in compact_lines(&[
+            business.address.as_str(),
+            business.city.as_str(),
+            business.country.as_str(),
+            business.phone.as_str(),
+            business.email.as_str(),
+            business.tax_id.as_str(),
+        ]) {
+            self.canvas
+                .text(self.margin, left_y, 9.0, &line, "F1", muted);
+            left_y -= 12.0;
+        }
+
+        let right = self.width - self.margin;
+        self.canvas
+            .text_right(right, self.y, 26.0, "INVOICE", "F2", teal);
+        let meta_y = self.y - 22.0;
+        self.canvas.text_right(
+            right,
+            meta_y,
+            10.0,
+            &format!("Invoice #: {inv_num}"),
+            "F2",
+            dark,
+        );
+        self.canvas.text_right(
+            right,
+            meta_y - 14.0,
+            9.0,
+            &format!("Date: {}", invoice.issue_date),
+            "F1",
+            muted,
+        );
+        self.canvas.text_right(
+            right,
+            meta_y - 28.0,
+            9.0,
+            &format!("Due: {}", invoice.due_date),
+            "F1",
+            muted,
+        );
+        self.canvas.text_right(
+            right,
+            meta_y - 42.0,
+            9.0,
+            &invoice.status.to_uppercase(),
+            "F2",
+            teal,
+        );
+
+        self.y = left_y.min(meta_y - 62.0);
+        self.canvas.line(
+            self.margin,
+            self.y,
+            self.width - self.margin,
+            self.y,
+            teal,
+            1.6,
+        );
+        self.y -= 24.0;
+    }
+
+    fn draw_bill_to(&mut self, invoice: &InvoiceWithDetails) {
+        self.ensure_space(86.0);
+        let teal = (0.125, 0.502, 0.553);
+        let dark = (0.10, 0.10, 0.10);
+        let muted = (0.34, 0.34, 0.34);
+        let client = invoice.client.as_ref();
+        let client_name = client.map(|c| c.name.as_str()).unwrap_or("Unknown Client");
+
+        self.canvas
+            .text(self.margin, self.y, 9.0, "BILL TO", "F2", teal);
+        self.y -= 15.0;
+        self.canvas
+            .text(self.margin, self.y, 12.0, client_name, "F2", dark);
+        self.y -= 14.0;
+
+        let lines = if let Some(client) = client {
+            compact_lines(&[
+                client.address.as_str(),
+                client.city.as_str(),
+                client.country.as_str(),
+                client.email.as_str(),
+                client.phone.as_str(),
+                client.tax_id.as_str(),
+            ])
+        } else {
+            Vec::new()
+        };
+        for line in lines {
+            self.canvas
+                .text(self.margin, self.y, 9.0, &line, "F1", muted);
+            self.y -= 12.0;
+        }
+        self.y -= 12.0;
+    }
+
+    fn draw_line_items(&mut self, invoice: &InvoiceWithDetails) {
+        let mut items: Vec<_> = invoice.line_items.iter().collect();
+        items.sort_by_key(|item| item.sort_order);
+        self.ensure_space(48.0);
+        self.draw_table_header();
+
+        let mut shaded = false;
+        for (idx, item) in items.iter().enumerate() {
+            let desc_width = self.description_column_width();
+            let desc_lines = wrap_pdf_text(&item.description, (desc_width / 4.6) as usize);
+            let row_h = (desc_lines.len() as f32 * 10.0 + 12.0).max(24.0);
+            if self.y - row_h < self.margin + 90.0 {
+                self.new_page();
+                let inv_num = invoice.invoice_number.as_deref().unwrap_or("DRAFT");
+                self.canvas.text(
+                    self.margin,
+                    self.y,
+                    10.0,
+                    &format!("Invoice {inv_num} continued"),
+                    "F2",
+                    (0.34, 0.34, 0.34),
+                );
+                self.y -= 20.0;
+                self.draw_table_header();
+            }
+            self.draw_item_row(
+                idx + 1,
+                item,
+                &desc_lines,
+                row_h,
+                &invoice.currency_code,
+                shaded,
+            );
+            shaded = !shaded;
+        }
+        self.y -= 14.0;
+    }
+
+    fn draw_table_header(&mut self) {
+        let x = self.margin;
+        let y = self.y;
+        let w = self.width - self.margin * 2.0;
+        self.canvas
+            .rect_fill(x, y - 18.0, w, 18.0, (0.125, 0.502, 0.553));
+        self.canvas
+            .text(x + 6.0, y - 12.0, 8.0, "#", "F2", (1.0, 1.0, 1.0));
+        self.canvas.text(
+            x + 30.0,
+            y - 12.0,
+            8.0,
+            "Description",
+            "F2",
+            (1.0, 1.0, 1.0),
+        );
+        let cols = self.columns();
+        self.canvas
+            .text_right(cols.qty_right, y - 12.0, 8.0, "Qty", "F2", (1.0, 1.0, 1.0));
+        self.canvas.text_right(
+            cols.unit_right,
+            y - 12.0,
+            8.0,
+            "Unit",
+            "F2",
+            (1.0, 1.0, 1.0),
+        );
+        self.canvas
+            .text_right(cols.tax_right, y - 12.0, 8.0, "Tax", "F2", (1.0, 1.0, 1.0));
+        self.canvas.text_right(
+            cols.amount_right,
+            y - 12.0,
+            8.0,
+            "Amount",
+            "F2",
+            (1.0, 1.0, 1.0),
+        );
+        self.y -= 18.0;
+    }
+
+    fn draw_item_row(
+        &mut self,
+        row_num: usize,
+        item: &crate::models::line_item::LineItem,
+        desc_lines: &[String],
+        row_h: f32,
+        currency: &str,
+        shaded: bool,
+    ) {
+        let x = self.margin;
+        let y_top = self.y;
+        let w = self.width - self.margin * 2.0;
+        if shaded {
+            self.canvas
+                .rect_fill(x, y_top - row_h, w, row_h, (0.969, 0.980, 0.984));
+        }
+        self.canvas.line(
+            x,
+            y_top - row_h,
+            x + w,
+            y_top - row_h,
+            (0.86, 0.86, 0.86),
+            0.5,
+        );
+
+        let cols = self.columns();
+        let row_y = y_top - 14.0;
+        self.canvas.text(
+            x + 6.0,
+            row_y,
+            8.0,
+            &row_num.to_string(),
+            "F1",
+            (0.45, 0.45, 0.45),
+        );
+        for (line_idx, line) in desc_lines.iter().enumerate() {
+            self.canvas.text(
+                x + 30.0,
+                row_y - line_idx as f32 * 10.0,
+                8.5,
+                line,
+                if line_idx == 0 { "F2" } else { "F1" },
+                (0.10, 0.10, 0.10),
+            );
+        }
+        self.canvas.text_right(
+            cols.qty_right,
+            row_y,
+            8.0,
+            &format_quantity(item.quantity),
+            "F1",
+            (0.10, 0.10, 0.10),
+        );
+        self.canvas.text_right(
+            cols.unit_right,
+            row_y,
+            8.0,
+            &format_currency_pdf(item.unit_price_minor, currency),
+            "F1",
+            (0.10, 0.10, 0.10),
+        );
+        self.canvas.text_right(
+            cols.tax_right,
+            row_y,
+            8.0,
+            &format_rate_bps(item.tax_rate_bps),
+            "F1",
+            (0.10, 0.10, 0.10),
+        );
+        self.canvas.text_right(
+            cols.amount_right,
+            row_y,
+            8.0,
+            &format_currency_pdf(item.line_total_minor, currency),
+            "F1",
+            (0.10, 0.10, 0.10),
+        );
+        self.y -= row_h;
+    }
+
+    fn draw_totals(&mut self, invoice: &InvoiceWithDetails) {
+        let total_rows = 3 + invoice.taxes.len() + usize::from(invoice.amount_paid_minor > 0);
+        self.ensure_space(total_rows as f32 * 16.0 + 38.0);
+        let totals = PdfTotals {
+            x: self.width - self.margin - 230.0,
+            right: self.width - self.margin,
+        };
+        let mut y = self.y;
+        let currency = invoice.currency_code.as_str();
+
+        self.draw_total_row(
+            &totals,
+            y,
+            "Subtotal",
+            invoice.subtotal_minor,
+            currency,
+            false,
+        );
+        y -= 16.0;
+        if invoice.discount_minor > 0 {
+            self.draw_total_row(
+                &totals,
+                y,
+                "Discount",
+                -invoice.discount_minor,
+                currency,
+                false,
+            );
+            y -= 16.0;
+        }
+        for tax in &invoice.taxes {
+            let label = format!("{} ({})", tax.tax_name, format_rate_bps(tax.tax_rate_bps));
+            let amount = if tax.is_withholding {
+                -tax.tax_amount_minor
+            } else {
+                tax.tax_amount_minor
+            };
+            self.draw_total_row(&totals, y, &label, amount, currency, false);
+            y -= 16.0;
+        }
+
+        self.canvas.line(
+            totals.x,
+            y + 5.0,
+            totals.right,
+            y + 5.0,
+            (0.125, 0.502, 0.553),
+            1.2,
+        );
+        self.draw_total_row(
+            &totals,
+            y - 8.0,
+            "Total",
+            invoice.total_minor,
+            currency,
+            true,
+        );
+        y -= 28.0;
+        if invoice.amount_paid_minor > 0 {
+            self.draw_total_row(
+                &totals,
+                y,
+                "Amount Paid",
+                -invoice.amount_paid_minor,
+                currency,
+                false,
+            );
+            y -= 16.0;
+            let balance = invoice
+                .total_minor
+                .saturating_sub(invoice.amount_paid_minor);
+            self.draw_total_row(&totals, y, "Balance Due", balance, currency, true);
+            y -= 18.0;
+        }
+        self.y = y - 10.0;
+    }
+
+    fn draw_total_row(
+        &mut self,
+        totals: &PdfTotals,
+        y: f32,
+        label: &str,
+        amount: i64,
+        currency: &str,
+        bold: bool,
+    ) {
+        let font = if bold { "F2" } else { "F1" };
+        let size = if bold { 10.5 } else { 8.5 };
+        let color = if bold {
+            (0.125, 0.502, 0.553)
+        } else if amount < 0 {
+            (0.70, 0.10, 0.10)
+        } else {
+            (0.18, 0.18, 0.18)
+        };
+        self.canvas
+            .text(totals.x, y, size, label, font, (0.26, 0.26, 0.26));
+        self.canvas.text_right(
+            totals.right,
+            y,
+            size,
+            &format_currency_pdf(amount, currency),
+            font,
+            color,
+        );
+    }
+
+    fn draw_payment_details(&mut self, business: &BusinessProfile) {
+        let has_bank = !business.bank_name.trim().is_empty()
+            || !business.bank_account_number.trim().is_empty()
+            || !business.bank_routing_number.trim().is_empty();
+        let has_mobile = !business.mobile_money_number.trim().is_empty();
+        if !has_bank && !has_mobile {
+            return;
+        }
+
+        self.ensure_space(72.0);
+        self.canvas.text(
+            self.margin,
+            self.y,
+            9.0,
+            "PAYMENT DETAILS",
+            "F2",
+            (0.125, 0.502, 0.553),
+        );
+        self.y -= 15.0;
+        if has_bank {
+            self.draw_small_line(&format!("Bank: {}", business.bank_name));
+            self.draw_small_line(&format!("Account: {}", business.bank_account_number));
+            self.draw_small_line(&format!("Routing: {}", business.bank_routing_number));
+        }
+        if has_mobile {
+            self.draw_small_line(&format!(
+                "Mobile Money: {} {}",
+                business.mobile_money_provider, business.mobile_money_number
+            ));
+        }
+        self.y -= 8.0;
+    }
+
+    fn draw_text_section(&mut self, label: &str, text: &str) {
+        if text.trim().is_empty() {
+            return;
+        }
+        let lines = wrap_pdf_text(text, 92);
+        let label_height = if label.is_empty() { 0.0 } else { 15.0 };
+        self.ensure_space(label_height + lines.len() as f32 * 12.0 + 16.0);
+        if !label.is_empty() {
+            self.canvas.text(
+                self.margin,
+                self.y,
+                9.0,
+                &label.to_uppercase(),
+                "F2",
+                (0.125, 0.502, 0.553),
+            );
+            self.y -= 15.0;
+        }
+        for line in lines {
+            self.draw_small_line(&line);
+        }
+        self.y -= 8.0;
+    }
+
+    fn draw_small_line(&mut self, text: &str) {
+        if text.trim().is_empty() {
+            return;
+        }
+        self.canvas
+            .text(self.margin, self.y, 8.5, text, "F1", (0.30, 0.30, 0.30));
+        self.y -= 11.0;
+    }
+
+    fn draw_footer(&mut self) {
+        let page_num = self.pages.len() + 1;
+        self.canvas.text(
+            self.margin,
+            24.0,
+            7.5,
+            "Generated by 900Invoice",
+            "F1",
+            (0.55, 0.55, 0.55),
+        );
+        self.canvas.text_right(
+            self.width - self.margin,
+            24.0,
+            7.5,
+            &format!("Page {page_num}"),
+            "F1",
+            (0.55, 0.55, 0.55),
+        );
+    }
+
+    fn description_column_width(&self) -> f32 {
+        let cols = self.columns();
+        cols.qty_right - (self.margin + 38.0)
+    }
+
+    fn columns(&self) -> PdfColumns {
+        let right = self.width - self.margin;
+        PdfColumns {
+            qty_right: right - 200.0,
+            unit_right: right - 120.0,
+            tax_right: right - 72.0,
+            amount_right: right - 6.0,
+        }
+    }
+}
+
+struct PdfColumns {
+    qty_right: f32,
+    unit_right: f32,
+    tax_right: f32,
+    amount_right: f32,
+}
+
+struct PdfTotals {
+    x: f32,
+    right: f32,
+}
+
+#[derive(Default)]
+struct PdfCanvas {
+    content: String,
+}
+
+impl PdfCanvas {
+    fn new() -> Self {
+        Self {
+            content: String::new(),
+        }
+    }
+
+    fn text(&mut self, x: f32, y: f32, size: f32, text: &str, font: &str, color: (f32, f32, f32)) {
+        if text.trim().is_empty() {
+            return;
+        }
+        self.content.push_str(&format!(
+            "{:.3} {:.3} {:.3} rg BT /{} {:.2} Tf 1 0 0 1 {:.2} {:.2} Tm ({}) Tj ET\n",
+            color.0,
+            color.1,
+            color.2,
+            font,
+            size,
+            x,
+            y,
+            pdf_escape_text(text),
+        ));
+    }
+
+    fn text_right(
+        &mut self,
+        right: f32,
+        y: f32,
+        size: f32,
+        text: &str,
+        font: &str,
+        color: (f32, f32, f32),
+    ) {
+        let width = estimate_text_width(text, size);
+        self.text(right - width, y, size, text, font, color);
+    }
+
+    fn rect_fill(&mut self, x: f32, y: f32, w: f32, h: f32, color: (f32, f32, f32)) {
+        self.content.push_str(&format!(
+            "{:.3} {:.3} {:.3} rg {:.2} {:.2} {:.2} {:.2} re f\n",
+            color.0, color.1, color.2, x, y, w, h
+        ));
+    }
+
+    fn line(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, color: (f32, f32, f32), width: f32) {
+        self.content.push_str(&format!(
+            "{:.3} {:.3} {:.3} RG {:.2} w {:.2} {:.2} m {:.2} {:.2} l S\n",
+            color.0, color.1, color.2, width, x1, y1, x2, y2
+        ));
+    }
+}
+
+fn compact_lines(parts: &[&str]) -> Vec<String> {
+    parts
+        .iter()
+        .map(|part| part.trim())
+        .filter(|part| !part.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn format_currency_pdf(amount_minor: i64, currency_code: &str) -> String {
+    let cfg = currency_config(currency_code);
+    let negative = amount_minor < 0;
+    let abs_amount = amount_minor.unsigned_abs() as i64;
+    let (whole, frac): (i64, i64) = if cfg.decimals == 0 {
+        (abs_amount, 0)
+    } else {
+        let divisor = 10i64.pow(cfg.decimals);
+        (abs_amount / divisor, abs_amount % divisor)
+    };
+    let whole_str = format_with_thousands(whole, cfg.thousands_sep);
+    let number = if cfg.decimals > 0 {
+        format!(
+            "{}{}{:0>width$}",
+            whole_str,
+            cfg.decimal_sep,
+            frac,
+            width = cfg.decimals as usize
+        )
+    } else {
+        whole_str
+    };
+    if negative {
+        format!("-{} {}", currency_code, number)
+    } else {
+        format!("{} {}", currency_code, number)
+    }
+}
+
+fn wrap_pdf_text(input: &str, max_chars: usize) -> Vec<String> {
+    let max_chars = max_chars.max(8);
+    let mut lines = Vec::new();
+    for raw_line in sanitize_pdf_text(input).split('\n') {
+        let mut current = String::new();
+        for word in raw_line.split_whitespace() {
+            if current.is_empty() {
+                current.push_str(word);
+            } else if current.len() + 1 + word.len() <= max_chars {
+                current.push(' ');
+                current.push_str(word);
+            } else {
+                lines.push(current);
+                current = word.to_string();
+            }
+            while current.len() > max_chars {
+                let rest = current.split_off(max_chars);
+                lines.push(current);
+                current = rest;
+            }
+        }
+        if !current.is_empty() {
+            lines.push(current);
+        }
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
+fn estimate_text_width(text: &str, size: f32) -> f32 {
+    sanitize_pdf_text(text).chars().count() as f32 * size * 0.50
+}
+
+fn pdf_escape_text(input: &str) -> String {
+    let mut escaped = String::new();
+    for ch in sanitize_pdf_text(input).chars() {
+        match ch {
+            '(' => escaped.push_str("\\("),
+            ')' => escaped.push_str("\\)"),
+            '\\' => escaped.push_str("\\\\"),
+            '\n' | '\r' | '\t' => escaped.push(' '),
+            c if c.is_ascii() && !c.is_control() => escaped.push(c),
+            _ => escaped.push('?'),
+        }
+    }
+    escaped
+}
+
+fn sanitize_pdf_text(input: &str) -> String {
+    let mut out = String::new();
+    for ch in input.chars() {
+        match ch {
+            '\r' => {}
+            '\n' => out.push('\n'),
+            '\t' => out.push(' '),
+            '\u{2013}' | '\u{2014}' | '\u{2212}' => out.push('-'),
+            '\u{2018}' | '\u{2019}' => out.push('\''),
+            '\u{201C}' | '\u{201D}' => out.push('"'),
+            '\u{20A6}' => out.push_str("NGN"),
+            '\u{20B9}' => out.push_str("INR"),
+            '\u{20B5}' => out.push_str("GHS"),
+            '\u{20AC}' => out.push_str("EUR"),
+            c if c.is_ascii() && !c.is_control() => out.push(c),
+            c if c.is_whitespace() => out.push(' '),
+            _ => out.push('?'),
+        }
+    }
+    out
+}
+
+fn build_pdf_document(pages: &[String], width: f32, height: f32) -> Vec<u8> {
+    use std::io::Write;
+
+    let page_count = pages.len().max(1);
+    let mut objects = Vec::with_capacity(4 + page_count * 2);
+    let page_object_ids: Vec<usize> = (0..page_count).map(|idx| 5 + idx * 2).collect();
+    let kids = page_object_ids
+        .iter()
+        .map(|id| format!("{id} 0 R"))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    objects.push("<< /Type /Catalog /Pages 2 0 R >>".to_string());
+    objects.push(format!(
+        "<< /Type /Pages /Kids [{}] /Count {} >>",
+        kids, page_count
+    ));
+    objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string());
+    objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>".to_string());
+
+    for (idx, page_id) in page_object_ids.iter().enumerate() {
+        let content_id = page_id + 1;
+        objects.push(format!(
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {:.2} {:.2}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents {} 0 R >>",
+            width, height, content_id
+        ));
+        let stream = pages.get(idx).map(String::as_str).unwrap_or("");
+        objects.push(format!(
+            "<< /Length {} >>\nstream\n{}endstream",
+            stream.len(),
+            stream
+        ));
+    }
+
+    let mut out = Vec::new();
+    out.extend_from_slice(b"%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+    let mut offsets = Vec::with_capacity(objects.len() + 1);
+    offsets.push(0usize);
+    for (idx, object) in objects.iter().enumerate() {
+        offsets.push(out.len());
+        writeln!(out, "{} 0 obj", idx + 1).expect("write pdf object header");
+        writeln!(out, "{}", object).expect("write pdf object");
+        writeln!(out, "endobj").expect("write pdf object footer");
+    }
+
+    let xref_offset = out.len();
+    writeln!(out, "xref").expect("write xref");
+    writeln!(out, "0 {}", objects.len() + 1).expect("write xref size");
+    writeln!(out, "0000000000 65535 f ").expect("write xref free");
+    for offset in offsets.iter().skip(1) {
+        writeln!(out, "{:010} 00000 n ", offset).expect("write xref row");
+    }
+    writeln!(out, "trailer").expect("write trailer");
+    writeln!(out, "<< /Size {} /Root 1 0 R >>", objects.len() + 1).expect("write trailer body");
+    writeln!(out, "startxref").expect("write startxref");
+    writeln!(out, "{}", xref_offset).expect("write xref offset");
+    writeln!(out, "%%EOF").expect("write eof");
+    out
+}
+
+// ---------------------------------------------------------------------------
 // Preview JSON data
 // ---------------------------------------------------------------------------
 
@@ -874,6 +1677,10 @@ pub fn get_preview_data(invoice: &InvoiceWithDetails, business: &BusinessProfile
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::client::Client;
+    use crate::models::invoice::InvoiceWithDetails;
+    use crate::models::line_item::LineItem;
+    use crate::models::tax::InvoiceTax;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -883,6 +1690,100 @@ mod tests {
             .expect("system time before unix epoch")
             .as_nanos();
         std::env::temp_dir().join(format!("900invoice_pdf_engine_test_{}_{}", ts, suffix))
+    }
+
+    fn business_fixture() -> BusinessProfile {
+        BusinessProfile {
+            id: "business-1".to_string(),
+            name: "Acme Studio".to_string(),
+            address: "1 Market Street".to_string(),
+            city: "Nairobi".to_string(),
+            country: "Kenya".to_string(),
+            country_code: "KE".to_string(),
+            phone: "+254 700 000000".to_string(),
+            email: "billing@example.com".to_string(),
+            website: "example.com".to_string(),
+            tax_id: "P051234567A".to_string(),
+            logo_path: None,
+            default_currency: "KES".to_string(),
+            default_payment_terms_days: 30,
+            bank_name: "Equity Bank".to_string(),
+            bank_account_number: "123456789".to_string(),
+            bank_routing_number: "EQBLKENA".to_string(),
+            mobile_money_number: "0700000000".to_string(),
+            mobile_money_provider: "M-Pesa".to_string(),
+            created_at: "2026-05-11T00:00:00".to_string(),
+            updated_at: "2026-05-11T00:00:00".to_string(),
+        }
+    }
+
+    fn invoice_fixture() -> InvoiceWithDetails {
+        InvoiceWithDetails {
+            id: "invoice-1".to_string(),
+            invoice_number: Some("INV-2026-0001".to_string()),
+            client_id: "client-1".to_string(),
+            client: Some(Client {
+                id: "client-1".to_string(),
+                name: "Globex Kenya".to_string(),
+                email: "ap@globex.example".to_string(),
+                phone: "+254 711 000000".to_string(),
+                address: "2 Client Road".to_string(),
+                city: "Nairobi".to_string(),
+                country: "Kenya".to_string(),
+                country_code: "KE".to_string(),
+                tax_id: "P009876543B".to_string(),
+                currency_code: "KES".to_string(),
+                payment_terms_days: 30,
+                notes: String::new(),
+                created_at: "2026-05-11T00:00:00".to_string(),
+                updated_at: "2026-05-11T00:00:00".to_string(),
+            }),
+            status: "sent".to_string(),
+            currency_code: "KES".to_string(),
+            subtotal_minor: 100_000,
+            discount_minor: 0,
+            tax_amount_minor: 16_000,
+            total_minor: 116_000,
+            amount_paid_minor: 20_000,
+            exchange_rate_to_usd: None,
+            exchange_rate_date: None,
+            issue_date: "2026-05-11".to_string(),
+            due_date: "2026-06-10".to_string(),
+            uses_inclusive_taxes: false,
+            notes: "Thank you for your business.".to_string(),
+            terms: "Payment due within 30 days.".to_string(),
+            footer: "Acme Studio".to_string(),
+            created_at: "2026-05-11T00:00:00".to_string(),
+            updated_at: "2026-05-11T00:00:00".to_string(),
+            finalized_at: None,
+            sent_at: None,
+            paid_at: None,
+            voided_at: None,
+            line_items: vec![LineItem {
+                id: "line-1".to_string(),
+                invoice_id: "invoice-1".to_string(),
+                product_id: None,
+                description: "Monthly advisory retainer".to_string(),
+                quantity: 100,
+                unit_price_minor: 100_000,
+                tax_rate_bps: 1600,
+                discount_bps: 0,
+                line_total_minor: 100_000,
+                sort_order: 0,
+                created_at: "2026-05-11T00:00:00".to_string(),
+            }],
+            taxes: vec![InvoiceTax {
+                id: "tax-1".to_string(),
+                invoice_id: "invoice-1".to_string(),
+                tax_rate_id: Some("vat-ke".to_string()),
+                tax_name: "VAT".to_string(),
+                tax_rate_bps: 1600,
+                tax_amount_minor: 16_000,
+                is_withholding: false,
+                created_at: "2026-05-11T00:00:00".to_string(),
+            }],
+            payments: Vec::new(),
+        }
     }
 
     #[test]
@@ -928,6 +1829,29 @@ mod tests {
     #[test]
     fn test_html_escape() {
         assert_eq!(html_escape("AT&T <Inc>"), "AT&amp;T &lt;Inc&gt;");
+    }
+
+    #[test]
+    fn test_generate_invoice_pdf_bytes_returns_real_pdf() {
+        let invoice = invoice_fixture();
+        let business = business_fixture();
+        let pdf = generate_invoice_pdf_bytes(&invoice, &business, "a4", "en");
+        let text = String::from_utf8_lossy(&pdf);
+
+        assert!(pdf.starts_with(b"%PDF-1.4"));
+        assert!(text.contains("/Type /Page"));
+        assert!(text.contains("Invoice #: INV-2026-0001"));
+        assert!(text.contains("Monthly advisory retainer"));
+        assert!(text.contains("%%EOF"));
+        assert!(!text.contains("<html"));
+    }
+
+    #[test]
+    fn test_pdf_text_escapes_literal_delimiters() {
+        assert_eq!(
+            pdf_escape_text("Acme (Ops) \\ Billing"),
+            "Acme \\(Ops\\) \\\\ Billing"
+        );
     }
 
     #[test]

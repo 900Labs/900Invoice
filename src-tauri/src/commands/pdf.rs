@@ -6,9 +6,7 @@ use tauri::State;
 
 type DbConn = Mutex<Connection>;
 
-/// Returns a base64-encoded HTML string (placeholder for full PDF generation).
-/// In v1.0 the HTML is base64-encoded and returned as a "PDF" so the frontend
-/// can open it in a webview or print dialog.
+/// Returns a base64-encoded PDF document for native file export.
 #[tauri::command]
 pub fn generate_invoice_pdf(db: State<'_, DbConn>, invoice_id: String) -> Result<String, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
@@ -21,13 +19,8 @@ pub fn generate_invoice_pdf(db: State<'_, DbConn>, invoice_id: String) -> Result
         .map_err(|e| e.to_string())?
         .unwrap_or_else(default_business);
 
-    let html = pdf_engine::generate_invoice_html(&invoice, &business, "a4", "en");
-
-    // Base64-encode the HTML for transport
-    use std::io::Write;
-    let mut buf = Vec::new();
-    buf.write_all(html.as_bytes()).map_err(|e| e.to_string())?;
-    Ok(base64_encode(&buf))
+    let pdf = pdf_engine::generate_invoice_pdf_bytes(&invoice, &business, "a4", "en");
+    Ok(base64_encode(&pdf))
 }
 
 /// Returns structured JSON data suitable for the frontend to render a PDF preview.

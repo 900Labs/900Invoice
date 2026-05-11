@@ -30,19 +30,19 @@ This document describes the technical architecture of 900Invoice for developers 
 │  │   │                                                    │  │   │
 │  │   │  ┌────────────┐  ┌────────────┐  ┌────────────┐  │  │   │
 │  │   │  │  Commands  │  │  Services  │  │   Models   │  │  │   │
-│  │   │  │ (~45 cmds) │  │ (tax, pdf, │  │ (Invoice,  │  │  │   │
+│  │   │  │ (61 cmds)  │  │ (tax, pdf, │  │ (Invoice,  │  │  │   │
 │  │   │  │            │  │ numbering) │  │  Client..) │  │  │   │
 │  │   │  └────────────┘  └────────────┘  └────────────┘  │  │   │
 │  │   │  ┌────────────┐  ┌────────────────────────────┐  │  │   │
-│  │   │  │     DB     │  │      tokio-cron-scheduler  │  │  │   │
-│  │   │  │ (rusqlite) │  │  (recurring invoice jobs)  │  │  │   │
+│  │   │  │     DB     │  │   Recurring due-date svc   │  │  │   │
+│  │   │  │ (rusqlite) │  │  (invoice schedule logic)  │  │  │   │
 │  │   │  └─────┬──────┘  └────────────────────────────┘  │  │   │
 │  │   └────────┼─────────────────────────────────────────┘  │   │
 │  └────────────┼──────────────────────────────────────────── ┘   │
 │               │                                                  │
 │    ┌──────────▼──────────┐    ┌───────────────────────────┐    │
-│    │      SQLite DB       │    │  typst-bake (PDF engine)  │    │
-│    │  900invoice.db       │    │  (embedded Typst binary)  │    │
+│    │      SQLite DB       │    │ Rust PDF/HTML renderer    │    │
+│    │  900invoice.db       │    │ native export + preview   │    │
 │    │  (single file, local)│    │                           │    │
 │    └─────────────────────┘    └───────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
@@ -127,18 +127,17 @@ User submits invoice form
 ### PDF Generation Flow
 
 ```
-User clicks "Generate PDF"
-  → invoke('generate_pdf', { invoice_id })
-  → Rust: generate_pdf command
-    → db::invoices::get_full_invoice(conn, id)  // invoice + client + line items
-    → services::pdf::render(full_invoice)
-      → load invoice.typ template
-      → substitute template variables with invoice data
-      → call typst_bake::compile(template_string)
-      → returns Vec<u8> (PDF bytes)
-    → write bytes to temp file
-    → shell::open(temp_file_path)  // opens in system PDF viewer
-  → Returns Ok(file_path)
+User clicks "Download PDF"
+  → save dialog selects a .pdf destination
+  → invoke('generate_invoice_pdf', { invoiceId })
+  → Rust: commands::pdf::generate_invoice_pdf
+    → db::queries::invoices::get_with_details(conn, id)
+    → services::pdf_engine::generate_invoice_pdf_bytes(invoice, business)
+      → render invoice header, client details, line items, taxes, payments, notes
+      → build a self-contained PDF document with built-in Helvetica fonts
+      → returns Vec<u8> PDF bytes
+    → command returns base64-encoded PDF bytes over IPC
+  → frontend decodes bytes and writes the selected file through the Tauri fs plugin
 ```
 
 ---
@@ -263,23 +262,18 @@ total:       1_200_000  (KES 12,000.00)
 
 ## Recurring Invoice Scheduling
 
-The scheduler uses `tokio-cron-scheduler` running in a background async task within the Tauri application process.
+Recurring generation is owned by `src-tauri/src/services/recurring_scheduler.rs`.
 
 ```
-On application startup:
-  1. Load all active recurring schedules from DB
-  2. For each schedule, check: has the job missed any runs since last_run?
-     - If yes: generate all missed invoices (up to a cap of 12)
-  3. Register all schedules with the cron scheduler
-  4. Scheduler fires jobs at the configured interval
-  5. Each job: generate next invoice → insert to DB → update last_run timestamp
+Manual generation or due processing:
+  1. Load active recurring schedules with next_generation_date <= today
+  2. For each due schedule, load its finalized template invoice
+  3. Copy template totals, line items, and invoice tax rows into a new draft
+  4. Advance next_generation_date from the scheduled date by the frequency
+  5. Mark schedules completed when their configured end_date is passed
 ```
 
-**Cron expressions used:**
-- Weekly: `0 8 * * 1` (Monday 8 AM local time)
-- Monthly: `0 8 1 * *` (1st of month, 8 AM)
-- Quarterly: `0 8 1 1,4,7,10 *` (1st of Jan, Apr, Jul, Oct)
-- Annual: `0 8 1 1 *` (January 1st)
+Supported frequency values are weekly, biweekly, monthly, quarterly, annual, annually, and yearly.
 
 ---
 
@@ -309,23 +303,22 @@ This table enables future CRDT-based or last-write-wins sync without schema chan
 Invoice data (from DB)
   │
   ▼
-services::pdf::render(&FullInvoice)
+services::pdf_engine
   │
-  ├── Load template: src-tauri/src/templates/invoice.typ
+  ├── generate_invoice_html(...)
+  │     Live WebView preview and browser print source
   │
-  ├── Template variable substitution:
-  │     {{business_name}} → "Acme Ltd"
-  │     {{invoice_number}} → "INV-2026-0042"
-  │     {{line_items}} → Typst table rows
-  │     {{total}} → "KES 12,000.00"
+  ├── get_preview_data(...)
+  │     Structured JSON for frontend preview components
   │
-  ├── typst_bake::compile(rendered_template: &str) → Result<Vec<u8>>
-  │     (calls the embedded Typst compiler)
+  ├── generate_invoice_pdf_bytes(...)
+  │     Native PDF bytes for save/export
   │
-  └── Returns PDF bytes → written to temp file → opened in system viewer
+  └── commands::pdf::generate_invoice_pdf(...)
+        Base64 transport over Tauri IPC
 ```
 
-The Typst template is embedded in the binary at compile time using `include_str!()`. The template can be customized before building — see [TEMPLATES.md](TEMPLATES.md).
+The PDF export path is dependency-free and uses built-in PDF fonts for portability. The HTML preview remains the richer visual renderer for on-screen inspection and print workflows.
 
 ---
 
@@ -361,5 +354,5 @@ All primary keys are TEXT (UUID v4). All monetary columns are INTEGER (minor uni
 - [ADR 002](adr/002-integer-money-storage.md) — why integer money storage
 - [ADR 003](adr/003-gap-free-invoice-numbering.md) — gap-free invoice numbering
 - [ADR 004](adr/004-offline-first-architecture.md) — offline-first design
-- [ADR 005](adr/005-typst-bake-pdf-generation.md) — PDF generation with typst-bake
+- [ADR 005](adr/005-typst-bake-pdf-generation.md) — superseded PDF generation decision
 - [ADR 006](adr/006-apache-2-licensing.md) — Apache 2.0 licensing choice

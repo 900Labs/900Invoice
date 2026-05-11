@@ -154,7 +154,7 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 
 | Command | Invoke Args | Returns | Notes |
 |---|---|---|---|
-| `generate_invoice_pdf` | `{ invoiceId: string }` | `string` | Returns base64-encoded HTML payload (current implementation). |
+| `generate_invoice_pdf` | `{ invoiceId: string }` | `string` | Returns base64-encoded PDF bytes suitable for native file export. |
 | `get_pdf_preview_data` | `{ invoiceId: string }` | JSON object | Includes `invoice`, `business`, `html`, and `preview`. |
 
 ### Payments

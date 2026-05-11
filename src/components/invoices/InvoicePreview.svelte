@@ -1,10 +1,14 @@
 <script lang="ts">
   import Modal from '../shared/Modal.svelte';
   import TaxSummary from './TaxSummary.svelte';
+  import { invoke } from '@tauri-apps/api/core';
+  import { save } from '@tauri-apps/plugin-dialog';
+  import { writeFile } from '@tauri-apps/plugin-fs';
   import { formatCurrency } from '../../utils/currency';
   import { formatDate } from '../../utils/date';
   import { t } from '../../stores/i18nStore';
   import { getSettings, getBusinessProfile } from '../../stores/settingsStore';
+  import { success, error as toastError } from '../../stores/toastStore';
   import type { Invoice } from '../../stores/invoiceStore';
 
   interface Props {
@@ -16,6 +20,35 @@
 
   let settings = $derived(getSettings());
   let profile = $derived(getBusinessProfile());
+
+  function base64ToBytes(base64: string) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  function invoicePdfName() {
+    const stem = invoice.invoiceNumber || `invoice-${invoice.id.slice(0, 8)}`;
+    return `${stem.replace(/[^a-zA-Z0-9._-]+/g, '-')}.pdf`;
+  }
+
+  async function handleDownloadPdf() {
+    try {
+      const path = await save({
+        defaultPath: invoicePdfName(),
+        filters: [{ name: 'PDF', extensions: ['pdf'] }],
+      });
+      if (!path) return;
+      const pdfBase64 = await invoke<string>('generate_invoice_pdf', { invoiceId: invoice.id });
+      await writeFile(path, base64ToBytes(pdfBase64));
+      success(t('common.success'));
+    } catch (e) {
+      toastError(String(e));
+    }
+  }
 </script>
 
 <Modal title={t('invoices.preview')} maxWidth="720px" {onclose}>
@@ -135,6 +168,7 @@
 
   {#snippet footer()}
     <button class="btn" onclick={onclose}>{t('common.close')}</button>
+    <button class="btn" onclick={handleDownloadPdf}>↓ {t('common.download')}</button>
     <button class="btn btn-primary" onclick={() => window.print()}>🖨 {t('common.print')}</button>
   {/snippet}
 </Modal>
