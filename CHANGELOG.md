@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Displayed withholding tax lines as deductions in frontend invoice summaries and matched editor draft totals to backend withholding calculations.
 - Replaced remaining hardcoded core UI, accessibility, import/export, and invoice preview strings with locale-backed translation keys across all supported languages.
 - Applied saved paper size, locale, and date-format settings to native PDF export and PDF preview data.
+- Aligned README installation guidance with the current source-archive release workflow instead of advertising unpublished platform installers.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.
 - Enabled recurring due processing on app startup and an hourly in-process worker for missed-job recovery while the app is open.
