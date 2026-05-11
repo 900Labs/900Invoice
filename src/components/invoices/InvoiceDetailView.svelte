@@ -54,9 +54,13 @@
 
   async function handleVoid() {
     if (!invoice) return;
-    await voidInvoice(invoice.id);
+    const result = await voidInvoice(invoice.id);
+    if (result) {
+      success(t('common.success'));
+    } else {
+      toastError(t('common.error'));
+    }
     showConfirmVoid = false;
-    success(t('common.success'));
   }
 
   async function handleMarkSent() {
@@ -141,7 +145,7 @@
         <button class="btn" onclick={handleDuplicate}>
           {t('invoices.duplicate')}
         </button>
-        {#if invoice.status !== 'Void' && invoice.status !== 'Paid'}
+        {#if invoice.status !== 'Void'}
           <button class="btn btn-ghost" style="color: var(--color-danger);" onclick={() => showConfirmVoid = true}>
             {t('invoices.void')}
           </button>
