@@ -5,6 +5,7 @@ description = "Enterprise-grade invoicing for developing economies"
 authors = ["900 Labs"]
 license = "Apache-2.0"
 edition = "2021"
+rust-version = "1.88"
 
 [lib]
 name = "nine_hundred_invoice_lib"
