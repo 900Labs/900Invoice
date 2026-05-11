@@ -61,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated report CSV export to save through a native file dialog and export rows for the active revenue, tax, or aging report.
 - Added client-and-currency revenue breakdowns to Reports and aligned revenue CSV export with that aggregation.
 - Made frontend date, relative-time, and currency formatting follow the active app locale and reapply persisted locale settings on startup.
+- Preserved selected tax-rate identity on invoice line items so withholding rates with duplicate percentages recalculate correctly.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.
 - Enabled recurring due processing on app startup and an hourly in-process worker for missed-job recovery while the app is open.

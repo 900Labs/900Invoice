@@ -178,6 +178,7 @@ pub fn duplicate_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json
         let new_li = CreateLineItem {
             invoice_id: created.id.clone(),
             product_id: li.product_id.clone(),
+            tax_rate_id: li.tax_rate_id.clone(),
             description: li.description.clone(),
             quantity: Some(li.quantity),
             unit_price_minor: li.unit_price_minor,

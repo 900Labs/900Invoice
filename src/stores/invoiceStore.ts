@@ -12,6 +12,7 @@ interface BackendLineItem {
   id: string;
   invoice_id: string;
   product_id: string | null;
+  tax_rate_id: string | null;
   description: string;
   quantity: number;
   unit_price_minor: number;
@@ -181,10 +182,10 @@ function mapLineItem(item: BackendLineItem): LineItem {
   return {
     id: item.id,
     productId: item.product_id,
+    taxRateId: item.tax_rate_id ?? taxRateIdForBps(item.tax_rate_bps),
     description: item.description,
     quantity: item.quantity / 100,
     unitPriceMinor: item.unit_price_minor,
-    taxRateId: taxRateIdForBps(item.tax_rate_bps),
     discountPercent: item.discount_bps / 100,
     sortOrder: item.sort_order,
   };
@@ -265,6 +266,7 @@ function toBackendLineItem(invoiceId: string, item: InvoiceInputLineItem, sortOr
   return {
     invoice_id: invoiceId,
     product_id: item.productId,
+    tax_rate_id: item.taxRateId,
     description: item.description,
     quantity: Math.round(item.quantity * 100),
     unit_price_minor: item.unitPriceMinor,
@@ -277,6 +279,7 @@ function toBackendLineItem(invoiceId: string, item: InvoiceInputLineItem, sortOr
 function toBackendLineItemUpdate(item: InvoiceInputLineItem, sortOrder: number) {
   return {
     product_id: item.productId,
+    tax_rate_id: item.taxRateId ?? '',
     description: item.description,
     quantity: Math.round(item.quantity * 100),
     unit_price_minor: item.unitPriceMinor,

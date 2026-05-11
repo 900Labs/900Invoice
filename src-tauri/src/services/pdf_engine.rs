@@ -1763,6 +1763,7 @@ mod tests {
                 id: "line-1".to_string(),
                 invoice_id: "invoice-1".to_string(),
                 product_id: None,
+                tax_rate_id: Some("tax-ke-vat".to_string()),
                 description: "Monthly advisory retainer".to_string(),
                 quantity: 100,
                 unit_price_minor: 100_000,
