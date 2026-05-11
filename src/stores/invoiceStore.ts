@@ -91,6 +91,7 @@ export interface TaxLine {
   rateBps: number;
   baseAmountMinor: number;
   taxAmountMinor: number;
+  isWithholding: boolean;
 }
 
 export interface Payment {
@@ -196,7 +197,11 @@ function mapTaxLine(line: BackendInvoiceTax, lineItems: BackendLineItem[]): TaxL
     ? getTaxRates().find(rate => rate.id === line.tax_rate_id)
     : getTaxRates().find(rate => rate.rateBps === line.tax_rate_bps);
   const baseAmountMinor = lineItems
-    .filter(item => item.tax_rate_bps === line.tax_rate_bps)
+    .filter(item =>
+      line.tax_rate_id
+        ? item.tax_rate_id === line.tax_rate_id
+        : item.tax_rate_bps === line.tax_rate_bps
+    )
     .reduce((sum, item) => sum + item.line_total_minor, 0);
 
   return {
@@ -206,6 +211,7 @@ function mapTaxLine(line: BackendInvoiceTax, lineItems: BackendLineItem[]): TaxL
     rateBps: line.tax_rate_bps,
     baseAmountMinor,
     taxAmountMinor: line.tax_amount_minor,
+    isWithholding: line.is_withholding,
   };
 }
 

@@ -104,6 +104,7 @@
     rateBps: number;
     baseAmountMinor: number;
     taxAmountMinor: number;
+    isWithholding: boolean;
   }
 
   let taxLines = $derived((() => {
@@ -122,6 +123,7 @@
           rateBps: rate.rateBps,
           baseAmountMinor: 0,
           taxAmountMinor: 0,
+          isWithholding: rate.isWithholding,
         };
       }
       acc[rate.id].baseAmountMinor += lineTotal;
@@ -130,12 +132,21 @@
     return Object.values(acc);
   })());
 
-  let taxTotalMinor = $derived(taxLines.reduce((sum, tl) => sum + tl.taxAmountMinor, 0));
+  let taxTotalMinor = $derived(
+    taxLines
+      .filter(tl => !tl.isWithholding)
+      .reduce((sum, tl) => sum + tl.taxAmountMinor, 0)
+  );
+  let withholdingMinor = $derived(
+    taxLines
+      .filter(tl => tl.isWithholding)
+      .reduce((sum, tl) => sum + tl.taxAmountMinor, 0)
+  );
 
   let totalMinor = $derived(
     taxMode === 'Exclusive'
-      ? subtotalMinor + taxTotalMinor
-      : subtotalMinor
+      ? subtotalMinor + taxTotalMinor - withholdingMinor
+      : subtotalMinor - withholdingMinor
   );
 
   // ─── Helper functions ─────────────────────────────────

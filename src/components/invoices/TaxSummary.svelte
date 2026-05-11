@@ -44,14 +44,16 @@
         </tr>
       {/if}
       {#each taxLines as line}
-        <tr class="tax-line">
-          <td class="label">
+        <tr class="tax-line" class:withholding-line={line.isWithholding}>
+          <td class="label" class:withholding-label={line.isWithholding}>
             {line.taxDisplayName} ({formatTaxRate(line.rateBps)})
           </td>
-          <td class="amount currency">{formatCurrency(line.taxAmountMinor, currencyCode)}</td>
+          <td class="amount currency" class:withholding-amount={line.isWithholding}>
+            {line.isWithholding ? '-' : ''}{formatCurrency(line.taxAmountMinor, currencyCode)}
+          </td>
         </tr>
       {/each}
-      {#if taxTotalMinor > 0 && taxLines.length > 1}
+      {#if taxTotalMinor > 0 && taxLines.filter(line => !line.isWithholding).length > 1}
         <tr>
           <td class="label"><strong>{t('invoices.taxTotal')}</strong></td>
           <td class="amount currency"><strong>{formatCurrency(taxTotalMinor, currencyCode)}</strong></td>
@@ -103,6 +105,10 @@
   .discount-amount { color: var(--color-success); }
 
   .tax-line .label { color: var(--color-text-secondary); }
+  .tax-line .withholding-label,
+  .tax-line .withholding-amount {
+    color: var(--color-danger);
+  }
 
   .total-row td {
     font-weight: 700;
