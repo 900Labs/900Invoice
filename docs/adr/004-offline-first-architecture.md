@@ -91,7 +91,7 @@ Because the user is responsible for their data, 900Invoice:
 
 ### Notes for Contributors
 
-Never add any network requests that are required for core functionality. Optional network features (exchange rate updates) must:
+Never add any network requests that are required for core functionality. Optional network features, such as future external rate refresh, must:
 1. Fail gracefully with a user-visible but non-blocking error
 2. Fall back to the most recent cached value
 3. Never block invoice creation or PDF generation

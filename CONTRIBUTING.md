@@ -309,34 +309,48 @@ let tax = (subtotal as f64 * rate_bps as f64 / 10000.0) as i64;
 2. **Translate all values** in `src/i18n/XX.json`. Do not translate keys. Do not remove keys. Use the placeholder syntax `{variable}` as-is.
    ```json
    {
-     "invoice.title": "Invoice",          // English
-     "invoice.title": "Facture",          // French
-     "invoice.title": "فاتورة"           // Arabic
+     "invoices": {
+       "title": "Invoices",
+       "itemsCount": "This invoice has {count} items"
+     },
+     "common": {
+       "save": "Save"
+     }
    }
    ```
 
-3. **Register the language** in `src/i18n/index.ts`:
+3. **Register the language** in `src/stores/i18nStore.ts` by adding a `loadTranslations()` case:
    ```typescript
-   export const SUPPORTED_LANGUAGES = [
-     { code: 'en', name: 'English', dir: 'ltr' },
-     { code: 'fr', name: 'Français', dir: 'ltr' },
-     { code: 'XX', name: 'Your Language Name', dir: 'ltr' }, // add here
-   ] as const;
+   case 'XX':
+     data = (await import('../i18n/XX.json')).default as Record<string, unknown>;
+     break;
    ```
 
-4. **For RTL languages (Arabic, Hebrew, Urdu, etc.):**
-   - Set `dir: 'rtl'` in the language definition
-   - The app's root element adds `dir="rtl"` automatically when an RTL language is active
+4. **Add the language** to `SUPPORTED_LOCALES` in `src/stores/i18nStore.ts`:
+   ```typescript
+   export const SUPPORTED_LOCALES = [
+     { code: 'en', name: 'English', nativeName: 'English' },
+     { code: 'fr', name: 'French', nativeName: 'Français' },
+     { code: 'XX', name: 'Your Language Name', nativeName: 'Native Name' },
+   ];
+   ```
+
+   Use `nativeName` for the label shown in the language picker.
+
+5. **Configure locale formatting** in `src/utils/locale.ts` if your language needs a specific date or number locale.
+
+6. **For RTL languages (Arabic, Hebrew, Urdu, Persian, etc.):**
+   - Update the RTL branch in `setLocale()` inside `src/stores/i18nStore.ts` to include your locale code
+   - The i18n store applies `dir="rtl"` to the `<html>` element when an RTL language is active
    - Test all layouts in RTL mode — flex/grid directions may need CSS adjustments
 
-5. **Test your translation:**
+7. **Test your translation:**
    - Switch to the language in Settings > Language
-   - Check every screen for untranslated keys (they appear as raw keys like `invoice.title`)
+   - Check every screen for untranslated keys (they appear as raw keys like `invoices.title`)
    - Check number and date formatting for your locale
+   - Generate an invoice PDF preview and native PDF export
 
-6. **Add a test:** Add your language code to the test in `src-tauri/src/commands/settings.rs` that validates all language codes.
-
-7. **Update documentation:** Add your language to the table in `docs/I18N.md`.
+8. **Update documentation:** Add your language to the table in `docs/I18N.md` and to the README language list.
 
 ---
 

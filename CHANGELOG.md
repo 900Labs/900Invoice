@@ -85,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restored Senegal to the README pre-configured tax-rate country list to match the active `SN` seed rate.
 - Aligned source-build Node.js prerequisites with the locked Svelte/Vite engine range and pinned the root package engine.
 - Corrected offline-first architecture notes to state that the current app ships no runtime internet workflow for exchange-rate refresh.
+- Cleaned up contributor documentation for adding languages so it matches `i18nStore.ts`, `SUPPORTED_LOCALES`, nested JSON translations, and current RTL handling.
 - Preserved product catalog default tax-rate identity so quick-invoiced line items keep the selected tax type when multiple active rates share the same percentage.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.
