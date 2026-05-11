@@ -4,8 +4,12 @@ mod models;
 mod services;
 mod sync;
 
-use std::sync::Mutex;
+use rusqlite::Connection;
+use std::{sync::Mutex, time::Duration};
 use tauri::Manager;
+
+type DbConn = Mutex<Connection>;
+const RECURRING_DUE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -21,7 +25,9 @@ pub fn run() {
                 .expect("failed to get app data dir");
             std::fs::create_dir_all(&app_data_dir).ok();
             let conn = db::init_database(&app_data_dir).expect("failed to init database");
+            process_due_recurring(&conn, "startup");
             app.manage(Mutex::new(conn));
+            start_recurring_due_worker(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -102,4 +108,34 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running 900Invoice");
+}
+
+fn start_recurring_due_worker(app_handle: tauri::AppHandle) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(RECURRING_DUE_CHECK_INTERVAL);
+        let db = app_handle.state::<DbConn>();
+        let conn = match db.lock() {
+            Ok(conn) => conn,
+            Err(err) => {
+                eprintln!("[recurring_scheduler] Failed to lock database for periodic run: {err}");
+                continue;
+            }
+        };
+        process_due_recurring(&conn, "periodic");
+    });
+}
+
+fn process_due_recurring(conn: &Connection, context: &str) {
+    match services::recurring_scheduler::process_all_due(conn) {
+        Ok(generated) if !generated.is_empty() => {
+            eprintln!(
+                "[recurring_scheduler] {context} run generated {} invoice(s)",
+                generated.len()
+            );
+        }
+        Ok(_) => {}
+        Err(err) => {
+            eprintln!("[recurring_scheduler] {context} run failed: {err}");
+        }
+    }
 }
