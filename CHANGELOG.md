@@ -77,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected offline-first backup documentation to describe the current manual JSON backup format instead of unimplemented backup reminders or raw SQLite backup files.
 - Exposed the invoice Void action for paid invoices so the detail UI matches the backend-supported Draft -> Finalized -> Sent -> Paid -> Void lifecycle.
 - Reworded README and Tauri ADR shell claims to avoid unmeasured binary/RAM promises, mark updater delivery as future work, and point command registration docs to `src-tauri/src/lib.rs`.
+- Corrected the README tax engine country list by removing the unseeded Senegal pre-configured tax-rate claim.
 - Preserved product catalog default tax-rate identity so quick-invoiced line items keep the selected tax type when multiple active rates share the same percentage.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.
