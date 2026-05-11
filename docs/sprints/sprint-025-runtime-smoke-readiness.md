@@ -43,6 +43,7 @@ Quality and governance automation were already hardened, but maintainers still n
 3. Frontend/runtime stability hardening:
    - pinned `@sveltejs/vite-plugin-svelte` to `6.0.0`
    - pinned `@sveltejs/vite-plugin-svelte-inspector` to `5.0.0`
+   - added an `aria-query@5.3.2` npm override to avoid the broken `5.3.1` generated-role package contents that block Svelte compiler imports during smoke builds
    - scoped `npm run check` to `--workspace src` for deterministic diagnostics
    - repaired `src-tauri/icons/icon.png` to a valid RGBA PNG required by `tauri::generate_context!()`
 4. Documentation updates:
@@ -57,6 +58,7 @@ Quality and governance automation were already hardened, but maintainers still n
 2. `npm run check` passed.
 3. `INSTALL_NODE_DEPS=1 SMOKE_PROFILE=baseline LEGACY_HARDWARE=1 ./scripts/verify-runtime-smoke.sh` passed.
 4. `INSTALL_NODE_DEPS=0 SMOKE_PROFILE=full ./scripts/verify-runtime-smoke.sh` passed.
+5. `npm ls aria-query` confirmed `aria-query@5.3.2 overridden` under `svelte@5.53.7`.
 
 ## Risks and Mitigations
 

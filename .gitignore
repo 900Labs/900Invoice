@@ -12,6 +12,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Generated local reports
+.tmp/
+
 # Tauri/Rust build artifacts
 src-tauri/target/
 src-tauri/gen/
