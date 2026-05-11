@@ -112,7 +112,7 @@ Signed Windows, macOS, and Linux installers are tracked as future release harden
 **Prerequisites:**
 
 - Rust 1.88+ — install from [rustup.rs](https://rustup.rs)
-- Node.js 18+ — install from [nodejs.org](https://nodejs.org)
+- Node.js 20.19+, 22.12+, or 24+ — install from [nodejs.org](https://nodejs.org)
 - Tauri CLI v2 for `cargo tauri` commands:
   ```bash
   cargo install tauri-cli --version "^2"
