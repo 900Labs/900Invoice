@@ -190,17 +190,20 @@ function mapLineItem(item: BackendLineItem): LineItem {
   };
 }
 
-function mapTaxLine(line: BackendInvoiceTax): TaxLine {
+function mapTaxLine(line: BackendInvoiceTax, lineItems: BackendLineItem[]): TaxLine {
   const matchedRate = line.tax_rate_id
     ? getTaxRates().find(rate => rate.id === line.tax_rate_id)
     : getTaxRates().find(rate => rate.rateBps === line.tax_rate_bps);
+  const baseAmountMinor = lineItems
+    .filter(item => item.tax_rate_bps === line.tax_rate_bps)
+    .reduce((sum, item) => sum + item.line_total_minor, 0);
 
   return {
     taxRateId: line.tax_rate_id ?? matchedRate?.id ?? '',
     taxName: line.tax_name,
     taxDisplayName: matchedRate?.displayName ?? line.tax_name,
     rateBps: line.tax_rate_bps,
-    baseAmountMinor: 0,
+    baseAmountMinor,
     taxAmountMinor: line.tax_amount_minor,
   };
 }
@@ -217,6 +220,7 @@ function mapPayment(payment: BackendPayment): Payment {
 }
 
 function mapInvoice(invoice: BackendInvoice): Invoice {
+  const lineItems = invoice.line_items ?? [];
   return {
     id: invoice.id,
     invoiceNumber: invoice.invoice_number ?? 'Draft',
@@ -236,8 +240,8 @@ function mapInvoice(invoice: BackendInvoice): Invoice {
     notes: invoice.notes,
     terms: invoice.terms,
     footer: invoice.footer,
-    lineItems: (invoice.line_items ?? []).map(mapLineItem),
-    taxLines: (invoice.taxes ?? []).map(mapTaxLine),
+    lineItems: lineItems.map(mapLineItem),
+    taxLines: (invoice.taxes ?? []).map(line => mapTaxLine(line, lineItems)),
     payments: (invoice.payments ?? []).map(mapPayment),
     createdAt: invoice.created_at,
     updatedAt: invoice.updated_at,

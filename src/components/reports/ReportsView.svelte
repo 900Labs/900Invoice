@@ -1,11 +1,14 @@
 <script lang="ts">
   import RevenueChart from './RevenueChart.svelte';
   import AgingReport from './AgingReport.svelte';
-  import { getDateRange } from '../../utils/date';
+  import { daysUntilDue, getDateRange } from '../../utils/date';
   import { t } from '../../stores/i18nStore';
   import { getInvoices } from '../../stores/invoiceStore';
   import { formatCurrency, formatTaxRate } from '../../utils/currency';
   import { getSettings } from '../../stores/settingsStore';
+  import { success, error as toastError } from '../../stores/toastStore';
+  import { save } from '@tauri-apps/plugin-dialog';
+  import { writeTextFile } from '@tauri-apps/plugin-fs';
 
   let activeTab = $state<'revenue' | 'tax' | 'aging'>('revenue');
   let period = $state<'week' | 'month' | 'quarter' | 'year'>('month');
@@ -64,31 +67,101 @@
     { value: 'year', label: t('reports.thisYear') },
   ] as const;
 
-  function exportCsv() {
-    // Build CSV from relevant data
-    const rows: string[][] = [
-      [t('invoices.number'), t('invoices.client'), t('invoices.date'), t('invoices.amount'), t('invoices.status')]
-    ];
-    const filtered = invoices.filter(i =>
+  function csvEscape(value: string | number) {
+    return `"${String(value).replaceAll('"', '""')}"`;
+  }
+
+  function reportInvoices() {
+    return invoices.filter(i =>
       i.issueDate >= dateRange.start && i.issueDate <= dateRange.end
     );
-    for (const inv of filtered) {
-      rows.push([
+  }
+
+  function agingBucket(dueDate: string) {
+    const days = daysUntilDue(dueDate);
+    if (days >= 0) return t('reports.current');
+    if (days >= -30) return t('reports.overdue30');
+    if (days >= -60) return t('reports.overdue60');
+    if (days >= -90) return t('reports.overdue90');
+    return t('reports.overdue90plus');
+  }
+
+  function buildRevenueRows(): string[][] {
+    return [
+      [
+        t('invoices.number'),
+        t('invoices.client'),
+        t('invoices.date'),
+        t('invoices.currency'),
+        t('invoices.subtotal'),
+        t('invoices.taxTotal'),
+        t('invoices.total'),
+        t('invoices.amountPaid'),
+        t('invoices.balanceDue'),
+        t('invoices.status'),
+      ],
+      ...reportInvoices().map(inv => [
         inv.invoiceNumber,
         inv.clientName,
         inv.issueDate,
+        inv.currencyCode,
+        (inv.subtotalMinor / 100).toFixed(2),
+        (inv.taxTotalMinor / 100).toFixed(2),
         (inv.totalMinor / 100).toFixed(2),
+        (inv.amountPaidMinor / 100).toFixed(2),
+        (inv.balanceDueMinor / 100).toFixed(2),
         inv.status,
-      ]);
+      ]),
+    ];
+  }
+
+  function buildTaxRows(): string[][] {
+    return [
+      [t('taxes.name'), t('taxes.rate'), t('invoices.currency'), t('invoices.subtotal'), t('reports.taxCollected')],
+      ...taxSummary.map(row => [
+        row.displayName,
+        formatTaxRate(row.rateBps),
+        row.currencyCode,
+        (row.totalBaseMinor / 100).toFixed(2),
+        (row.totalTaxMinor / 100).toFixed(2),
+      ]),
+    ];
+  }
+
+  function buildAgingRows(): string[][] {
+    const outstanding = invoices.filter(i => i.status !== 'Paid' && i.status !== 'Void' && i.status !== 'Draft');
+    return [
+      [t('invoices.number'), t('invoices.client'), t('invoices.dueDate'), 'Bucket', t('invoices.currency'), t('invoices.balanceDue')],
+      ...outstanding.map(inv => [
+        inv.invoiceNumber,
+        inv.clientName,
+        inv.dueDate,
+        agingBucket(inv.dueDate),
+        inv.currencyCode,
+        (inv.balanceDueMinor / 100).toFixed(2),
+      ]),
+    ];
+  }
+
+  function activeRows(): string[][] {
+    if (activeTab === 'tax') return buildTaxRows();
+    if (activeTab === 'aging') return buildAgingRows();
+    return buildRevenueRows();
+  }
+
+  async function exportCsv() {
+    try {
+      const path = await save({
+        defaultPath: `900invoice-${activeTab}-${period}.csv`,
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+      });
+      if (!path) return;
+      const csv = activeRows().map(row => row.map(csvEscape).join(',')).join('\n');
+      await writeTextFile(path, `${csv}\n`);
+      success(t('common.success'));
+    } catch (e) {
+      toastError(String(e));
     }
-    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `invoices-${period}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 </script>
 
