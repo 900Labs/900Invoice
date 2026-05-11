@@ -1,9 +1,14 @@
 <script lang="ts">
-  import { getInvoices } from '../../stores/invoiceStore';
+  import { getInvoices, type Invoice } from '../../stores/invoiceStore';
   import { formatCurrency } from '../../utils/currency';
+  import { currencyTotalDetails, currencyTotals } from '../../utils/currencyTotals';
   import { isOverdue, daysUntilDue } from '../../utils/date';
   import { t } from '../../stores/i18nStore';
   import { getSettings } from '../../stores/settingsStore';
+
+  interface AgingBucket {
+    invoices: Invoice[];
+  }
 
   let invoices = $derived(getInvoices());
   let settings = $derived(getSettings());
@@ -23,18 +28,17 @@
   }
 
   let agingBuckets = $derived((() => {
-    const buckets = {
-      current: { invoices: [] as typeof invoices, total: 0 },
-      overdue30: { invoices: [] as typeof invoices, total: 0 },
-      overdue60: { invoices: [] as typeof invoices, total: 0 },
-      overdue90: { invoices: [] as typeof invoices, total: 0 },
-      overdue90plus: { invoices: [] as typeof invoices, total: 0 },
+    const buckets: Record<string, AgingBucket> = {
+      current: { invoices: [] },
+      overdue30: { invoices: [] },
+      overdue60: { invoices: [] },
+      overdue90: { invoices: [] },
+      overdue90plus: { invoices: [] },
     };
 
     for (const inv of outstanding) {
       const bucket = getAgingBucket(inv.dueDate);
-      buckets[bucket as keyof typeof buckets].invoices.push(inv);
-      buckets[bucket as keyof typeof buckets].total += inv.balanceDueMinor;
+      buckets[bucket].invoices.push(inv);
     }
 
     return buckets;
@@ -67,9 +71,17 @@
           </span>
           <span class="aging-count">{bucket.invoices.length}</span>
         </div>
-        <p class="aging-total currency">
-          {formatCurrency(bucket.total, defaultCurrency)}
-        </p>
+        <div class="aging-total-list">
+          {#each currencyTotalDetails(
+            currencyTotals(bucket.invoices, inv => inv.currencyCode, inv => inv.balanceDueMinor),
+            defaultCurrency
+          ) as total}
+            <p class="aging-total currency">
+              <span>{total.value}</span>
+              <span class="aging-currency">{total.label}</span>
+            </p>
+          {/each}
+        </div>
       </div>
     {/each}
   </div>
@@ -150,5 +162,21 @@
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: var(--color-text);
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .aging-total-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .aging-currency {
+    flex: 0 0 auto;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
   }
 </style>

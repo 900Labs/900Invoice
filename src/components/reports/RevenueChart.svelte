@@ -66,24 +66,28 @@
   // Simple bar chart: group by week or month bucket
   interface Bucket {
     label: string;
+    currencyCode: string;
     amount: number;
   }
 
   let buckets = $derived((() => {
-    const acc: Record<string, number> = {};
+    const acc: Record<string, Bucket> = {};
     for (const inv of periodInvoices) {
-      let key = inv.issueDate.slice(0, 7); // YYYY-MM
-      if (period === 'week') key = inv.issueDate.slice(0, 10);
-      acc[key] = (acc[key] ?? 0) + inv.totalMinor;
+      let label = inv.issueDate.slice(0, 7); // YYYY-MM
+      if (period === 'week') label = inv.issueDate.slice(0, 10);
+      const key = `${label}::${inv.currencyCode}`;
+      if (!acc[key]) {
+        acc[key] = { label, currencyCode: inv.currencyCode, amount: 0 };
+      }
+      acc[key].amount += inv.totalMinor;
     }
-    return Object.entries(acc)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([label, amount]): Bucket => ({ label, amount }));
+    return Object.values(acc)
+      .sort((a, b) =>
+        a.label.localeCompare(b.label) || a.currencyCode.localeCompare(b.currencyCode)
+      );
   })());
 
   let maxAmount = $derived(Math.max(...buckets.map(b => b.amount), 1));
-
-  let totalRevenue = $derived(periodInvoices.reduce((s, i) => s + i.totalMinor, 0));
   let defaultCurrency = $derived(settings.defaultCurrency || 'USD');
 </script>
 
@@ -113,10 +117,11 @@
             <div
               class="bar"
               style:height="{(bucket.amount / maxAmount) * 100}%"
-              title={formatCurrency(bucket.amount, defaultCurrency)}
+              title={formatCurrency(bucket.amount, bucket.currencyCode)}
             ></div>
           </div>
           <span class="bar-label">{bucket.label}</span>
+          <span class="bar-code">{bucket.currencyCode}</span>
         </div>
       {/each}
     </div>
@@ -236,9 +241,14 @@
   .bar-label {
     font-size: 9px;
     color: var(--color-text-muted);
-    transform: rotate(-45deg);
     white-space: nowrap;
     margin-block-start: var(--space-xs);
+  }
+
+  .bar-code {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--color-text-muted);
   }
 
   .no-data {

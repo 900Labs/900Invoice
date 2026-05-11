@@ -2,32 +2,46 @@
   import StatCard from './StatCard.svelte';
   import RecentActivity from './RecentActivity.svelte';
   import OverdueAlert from './OverdueAlert.svelte';
-  import { getInvoices, getTotalOutstanding, getOverdueInvoices } from '../../stores/invoiceStore';
+  import { getInvoices, getOverdueInvoices } from '../../stores/invoiceStore';
   import { getClientCount } from '../../stores/clientStore';
-  import { formatCurrency } from '../../utils/currency';
+  import {
+    currencyTotalDetails,
+    currencyTotals,
+    hasPositiveCurrencyTotal,
+  } from '../../utils/currencyTotals';
   import { getSettings } from '../../stores/settingsStore';
   import { getDateRange } from '../../utils/date';
   import { t } from '../../stores/i18nStore';
 
   let invoices = $derived(getInvoices());
   let settings = $derived(getSettings());
-  let totalOutstanding = $derived(getTotalOutstanding());
   let overdueInvoices = $derived(getOverdueInvoices());
   let clientCount = $derived(getClientCount());
 
   let thisMonthRange = $derived(getDateRange('month'));
 
-  let thisMonthRevenue = $derived(
-    invoices
-      .filter(i =>
+  let thisMonthRevenueTotals = $derived(
+    currencyTotals(
+      invoices.filter(i =>
         i.status === 'Paid' &&
         i.issueDate >= thisMonthRange.start &&
         i.issueDate <= thisMonthRange.end
-      )
-      .reduce((sum, i) => sum + i.totalMinor, 0)
+      ),
+      invoice => invoice.currencyCode,
+      invoice => invoice.totalMinor
+    )
+  );
+
+  let outstandingTotals = $derived(
+    currencyTotals(
+      invoices.filter(i => i.status !== 'Paid' && i.status !== 'Void' && i.status !== 'Draft'),
+      invoice => invoice.currencyCode,
+      invoice => invoice.balanceDueMinor
+    )
   );
 
   let defaultCurrency = $derived(settings.defaultCurrency);
+  let hasOutstanding = $derived(hasPositiveCurrencyTotal(outstandingTotals));
 </script>
 
 <div class="view-container">
@@ -36,15 +50,15 @@
   <div class="stats-grid">
     <StatCard
       label={t('dashboard.totalRevenue')}
-      value={formatCurrency(thisMonthRevenue, defaultCurrency)}
+      details={currencyTotalDetails(thisMonthRevenueTotals, defaultCurrency)}
       icon="💰"
       sublabel={t('dashboard.thisMonth')}
     />
     <StatCard
       label={t('dashboard.outstanding')}
-      value={formatCurrency(totalOutstanding, defaultCurrency)}
+      details={currencyTotalDetails(outstandingTotals, defaultCurrency)}
       icon="📋"
-      color={totalOutstanding > 0 ? 'var(--color-warning)' : 'var(--color-teal-primary)'}
+      color={hasOutstanding ? 'var(--color-warning)' : 'var(--color-teal-primary)'}
     />
     <StatCard
       label={t('dashboard.overdue')}
