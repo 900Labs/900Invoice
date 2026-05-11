@@ -84,12 +84,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated quality and contributor documentation to include runtime smoke evidence as part of release-readiness validation.
 - Updated frontend type-check command to use `svelte-check --workspace src --tsconfig ../tsconfig.json` for deterministic diagnostics in constrained environments.
 - Updated frontend tooling dependencies by pinning `@sveltejs/vite-plugin-svelte` to `6.0.0` and `@sveltejs/vite-plugin-svelte-inspector` to `5.0.0` for reproducible smoke/build behavior.
+- Added an npm override for `aria-query@5.3.2` to keep Svelte compiler imports/builds reproducible when `svelte@5.53.7` requests the broken `aria-query@5.3.1` package contents.
 
 ### Fixed
 
 - Removed invalid `app.title` key from `src-tauri/tauri.conf.json` to satisfy strict Tauri/Rust checks.
 - Removed `rg` dependency from repository-policy scripts to improve compatibility on minimal CI runners.
 - Repaired `src-tauri/icons/icon.png` to valid RGBA PNG content required by `tauri::generate_context!()` during Rust compile checks.
+- Ignored generated local `.tmp/` governance reports so release trace artifacts do not dirty contributor work trees.
 
 ## [1.0.0] - 2026-03-05
 
