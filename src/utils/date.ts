@@ -1,9 +1,10 @@
 // Date utilities
+import { resolveDateLocale } from './locale';
 
 /**
  * Format an ISO date string to a human-readable format.
  */
-export function formatDate(isoDate: string, format: string = 'YYYY-MM-DD', locale: string = 'en'): string {
+export function formatDate(isoDate: string, format: string = 'YYYY-MM-DD', locale?: string): string {
   if (!isoDate) return '';
   try {
     const date = new Date(isoDate);
@@ -22,10 +23,12 @@ export function formatDate(isoDate: string, format: string = 'YYYY-MM-DD', local
         return `${m}/${d}/${y}`;
       case 'DD.MM.YYYY':
         return `${d}.${m}.${y}`;
-      case 'MMM D, YYYY': {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return `${months[date.getMonth()]} ${date.getDate()}, ${y}`;
-      }
+      case 'MMM D, YYYY':
+        return new Intl.DateTimeFormat(resolveDateLocale(locale), {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }).format(date);
       default:
         return `${y}-${m}-${d}`;
     }
@@ -138,9 +141,10 @@ export function timeAgo(isoDate: string): string {
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
 
-  if (days > 7) return formatDate(isoDate);
-  if (days > 0) return `${days}d ago`;
-  if (hours > 0) return `${hours}h ago`;
-  if (minutes > 0) return `${minutes}m ago`;
-  return 'just now';
+  const rtf = new Intl.RelativeTimeFormat(resolveDateLocale(), { numeric: 'auto' });
+  if (days > 7) return formatDate(isoDate, 'MMM D, YYYY');
+  if (days > 0) return rtf.format(-days, 'day');
+  if (hours > 0) return rtf.format(-hours, 'hour');
+  if (minutes > 0) return rtf.format(-minutes, 'minute');
+  return rtf.format(0, 'second');
 }

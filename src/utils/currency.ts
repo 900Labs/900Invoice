@@ -1,4 +1,5 @@
 // Currency utilities
+import { resolveNumberLocale } from './locale';
 
 export interface CurrencyConfig {
   code: string;
@@ -36,15 +37,16 @@ export function getAllCurrencies(): CurrencyConfig[] {
 export function formatCurrency(
   minorUnits: number,
   currencyCode: string,
-  position: 'before' | 'after' = 'before'
+  position: 'before' | 'after' = 'before',
+  locale?: string
 ): string {
   const config = getCurrencyConfig(currencyCode);
   const divisor = Math.pow(10, config.decimals);
   const major = minorUnits / divisor;
-  const formatted = major.toLocaleString('en-US', {
+  const formatted = new Intl.NumberFormat(resolveNumberLocale(locale), {
     minimumFractionDigits: config.decimals,
     maximumFractionDigits: config.decimals,
-  });
+  }).format(major);
   if (position === 'after') {
     return `${formatted} ${config.symbol}`;
   }

@@ -1,5 +1,6 @@
 // Settings store using Svelte 5 runes
 import { invoke } from '@tauri-apps/api/core';
+import { setLocale } from './i18nStore';
 
 interface BackendBusinessProfile {
   id: string;
@@ -163,9 +164,11 @@ export async function loadSettings() {
   try {
     const s = await invoke<Record<string, unknown>>('get_settings');
     settings = mapSettings(s);
+    await setLocale(settings.locale);
   } catch (e) {
     // Use defaults if backend not available
     settings = { ...defaultSettings };
+    await setLocale(settings.locale);
   } finally {
     loading = false;
   }
