@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from '../../stores/i18nStore';
+
   interface Props {
     size?: 'sm' | 'md' | 'lg';
     color?: string;
@@ -21,5 +23,5 @@
   style:height={sz}
   style:border-top-color={color ?? 'var(--color-teal-primary)'}
   role="status"
-  aria-label="Loading"
+  aria-label={t('common.loading')}
 ></span>

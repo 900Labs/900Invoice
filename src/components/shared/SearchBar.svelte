@@ -36,7 +36,7 @@
     aria-label={placeholder ?? t('common.search')}
   />
   {#if value}
-    <button class="search-clear" onclick={handleClear} aria-label="Clear search">✕</button>
+    <button class="search-clear" onclick={handleClear} aria-label={t('common.clearSearch')}>✕</button>
   {/if}
 </div>
 

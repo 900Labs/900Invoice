@@ -63,10 +63,10 @@
         {#if profile.city}<p>{profile.city}, {profile.country}</p>{/if}
         {#if profile.phone}<p>{profile.phone}</p>{/if}
         {#if profile.email}<p>{profile.email}</p>{/if}
-        {#if profile.taxId}<p>Tax ID: {profile.taxId}</p>{/if}
+        {#if profile.taxId}<p>{t('clients.taxId')}: {profile.taxId}</p>{/if}
       </div>
       <div class="preview-invoice-info">
-        <h1 class="preview-title">INVOICE</h1>
+        <h1 class="preview-title">{t('invoices.invoice')}</h1>
         <table class="preview-meta-table">
           <tbody>
             <tr>
@@ -150,10 +150,10 @@
     <!-- Payment Info -->
     {#if profile.bankName || profile.mobileMoney}
       <div class="preview-section">
-        <h4 class="section-label">Payment Information</h4>
+        <h4 class="section-label">{t('payments.information')}</h4>
         {#if profile.bankName}
-          <p>Bank: {profile.bankName}</p>
-          {#if profile.bankAccount}<p>Account: {profile.bankAccount}</p>{/if}
+          <p>{t('payments.bank')}: {profile.bankName}</p>
+          {#if profile.bankAccount}<p>{t('payments.account')}: {profile.bankAccount}</p>{/if}
         {/if}
         {#if profile.mobileMoney}
           <p>{profile.mobileMoneyProvider ? profile.mobileMoneyProvider + ': ' : ''}{profile.mobileMoney}</p>

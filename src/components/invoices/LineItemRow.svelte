@@ -50,7 +50,7 @@
 
 <tr class="line-item-row">
   <td class="col-drag">
-    <span class="drag-handle" title="Reorder">⠿</span>
+    <span class="drag-handle" title={t('common.reorder')}>⠿</span>
   </td>
   <td class="col-product">
     <select class="select select-sm" onchange={handleProductSelect}>
@@ -113,7 +113,7 @@
     {formatCurrency(lineTotal, currencyCode)}
   </td>
   <td class="col-delete">
-    <button class="btn btn-ghost btn-icon btn-sm delete-btn" onclick={ondelete} title="Remove line">✕</button>
+    <button class="btn btn-ghost btn-icon btn-sm delete-btn" onclick={ondelete} title={t('common.removeLine')}>✕</button>
   </td>
 </tr>
 
