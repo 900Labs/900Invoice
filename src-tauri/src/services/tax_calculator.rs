@@ -224,9 +224,19 @@ pub fn calculate_invoice_taxes_from_models(
             continue;
         }
 
-        let matched_rate = tax_rates
-            .iter()
-            .find(|rate| rate.is_active && rate.rate_bps == item.tax_rate_bps);
+        let matched_rate = item
+            .tax_rate_id
+            .as_deref()
+            .and_then(|id| {
+                tax_rates
+                    .iter()
+                    .find(|rate| rate.is_active && rate.id == id)
+            })
+            .or_else(|| {
+                tax_rates
+                    .iter()
+                    .find(|rate| rate.is_active && rate.rate_bps == item.tax_rate_bps)
+            });
         let tax_rate_id = matched_rate.map(|rate| rate.id.clone());
         let tax_name = matched_rate
             .map(|rate| rate.display_name.clone())
@@ -300,6 +310,7 @@ mod tests {
             id: id.to_string(),
             invoice_id: "invoice-1".to_string(),
             product_id: None,
+            tax_rate_id: None,
             description: "Service".to_string(),
             quantity: 100,
             unit_price_minor: line_total_minor,
@@ -506,5 +517,23 @@ mod tests {
         assert_eq!(s.tax_lines[0].tax_rate_id.as_deref(), Some("vat"));
         assert_eq!(s.tax_lines[0].tax_amount_minor, 1_600);
         assert_eq!(s.total_minor, 31_600);
+    }
+
+    #[test]
+    fn test_model_invoice_prefers_line_item_tax_rate_id_for_withholding() {
+        let mut line = test_line_item("line-1", 10_000, 500);
+        line.tax_rate_id = Some("wht".to_string());
+        let tax_rates = vec![
+            test_tax_rate("gst", "GST @ 5%", 500, false),
+            test_tax_rate("wht", "WHT @ 5%", 500, true),
+        ];
+
+        let s = calculate_invoice_taxes_from_models(&[line], &tax_rates, false);
+
+        assert_eq!(s.tax_lines.len(), 1);
+        assert_eq!(s.tax_lines[0].tax_rate_id.as_deref(), Some("wht"));
+        assert!(s.tax_lines[0].is_withholding);
+        assert_eq!(s.total_tax_minor, 0);
+        assert_eq!(s.total_minor, 9_500);
     }
 }

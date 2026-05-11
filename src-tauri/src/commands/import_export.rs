@@ -187,7 +187,7 @@ fn list_tax_rates_for_backup(conn: &Connection) -> Result<Vec<TaxRate>, String> 
 fn list_line_items_for_backup(conn: &Connection) -> Result<Vec<LineItem>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, invoice_id, product_id, description, quantity, unit_price_minor,
+            "SELECT id, invoice_id, product_id, tax_rate_id, description, quantity, unit_price_minor,
                     tax_rate_bps, discount_bps, line_total_minor, sort_order, created_at
              FROM invoice_line_items ORDER BY invoice_id ASC, sort_order ASC",
         )
@@ -198,14 +198,15 @@ fn list_line_items_for_backup(conn: &Connection) -> Result<Vec<LineItem>, String
                 id: row.get(0)?,
                 invoice_id: row.get(1)?,
                 product_id: row.get(2)?,
-                description: row.get(3)?,
-                quantity: row.get(4)?,
-                unit_price_minor: row.get(5)?,
-                tax_rate_bps: row.get(6)?,
-                discount_bps: row.get(7)?,
-                line_total_minor: row.get(8)?,
-                sort_order: row.get(9)?,
-                created_at: row.get(10)?,
+                tax_rate_id: row.get(3)?,
+                description: row.get(4)?,
+                quantity: row.get(5)?,
+                unit_price_minor: row.get(6)?,
+                tax_rate_bps: row.get(7)?,
+                discount_bps: row.get(8)?,
+                line_total_minor: row.get(9)?,
+                sort_order: row.get(10)?,
+                created_at: row.get(11)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -808,13 +809,14 @@ fn restore_backup(conn: &Connection, backup: Value) -> Result<Value, String> {
             count += conn
                 .execute(
                     "INSERT OR IGNORE INTO invoice_line_items
-                     (id, invoice_id, product_id, description, quantity, unit_price_minor,
+                     (id, invoice_id, product_id, tax_rate_id, description, quantity, unit_price_minor,
                       tax_rate_bps, discount_bps, line_total_minor, sort_order, created_at)
-                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
                     rusqlite::params![
                         item.id,
                         item.invoice_id,
                         item.product_id,
+                        item.tax_rate_id,
                         item.description,
                         item.quantity,
                         item.unit_price_minor,
@@ -1184,6 +1186,7 @@ mod tests {
                 "id": "line-1",
                 "invoice_id": "invoice-1",
                 "product_id": "product-1",
+                "tax_rate_id": "tax-custom",
                 "description": "Consulting",
                 "quantity": 100,
                 "unit_price_minor": 10000,

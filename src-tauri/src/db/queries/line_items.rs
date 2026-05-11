@@ -7,18 +7,20 @@ fn row_to_line_item(row: &rusqlite::Row<'_>) -> Result<LineItem> {
         id: row.get(0)?,
         invoice_id: row.get(1)?,
         product_id: row.get(2)?,
-        description: row.get(3)?,
-        quantity: row.get(4)?,
-        unit_price_minor: row.get(5)?,
-        tax_rate_bps: row.get(6)?,
-        discount_bps: row.get(7)?,
-        line_total_minor: row.get(8)?,
-        sort_order: row.get(9)?,
-        created_at: row.get(10)?,
+        tax_rate_id: row.get(3)?,
+        description: row.get(4)?,
+        quantity: row.get(5)?,
+        unit_price_minor: row.get(6)?,
+        tax_rate_bps: row.get(7)?,
+        discount_bps: row.get(8)?,
+        line_total_minor: row.get(9)?,
+        sort_order: row.get(10)?,
+        created_at: row.get(11)?,
     })
 }
 
-const SELECT_COLS: &str = "id, invoice_id, product_id, description, quantity, unit_price_minor,
+const SELECT_COLS: &str =
+    "id, invoice_id, product_id, tax_rate_id, description, quantity, unit_price_minor,
      tax_rate_bps, discount_bps, line_total_minor, sort_order, created_at";
 
 pub fn list_for_invoice(conn: &Connection, invoice_id: &str) -> Result<Vec<LineItem>> {
@@ -48,13 +50,14 @@ pub fn insert(conn: &Connection, c: &CreateLineItem) -> Result<LineItem> {
 
     conn.execute(
         "INSERT INTO invoice_line_items
-             (id, invoice_id, product_id, description, quantity, unit_price_minor,
+             (id, invoice_id, product_id, tax_rate_id, description, quantity, unit_price_minor,
               tax_rate_bps, discount_bps, line_total_minor, sort_order)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             id,
             c.invoice_id,
             c.product_id,
+            c.tax_rate_id,
             c.description,
             quantity,
             c.unit_price_minor,
@@ -73,6 +76,12 @@ pub fn update(conn: &Connection, id: &str, u: &UpdateLineItem) -> Result<LineIte
         conn.execute(
             "UPDATE invoice_line_items SET product_id=?1 WHERE id=?2",
             params![v, id],
+        )?;
+    }
+    if let Some(v) = &u.tax_rate_id {
+        conn.execute(
+            "UPDATE invoice_line_items SET tax_rate_id=?1 WHERE id=?2",
+            params![if v.is_empty() { None } else { Some(v.as_str()) }, id],
         )?;
     }
     if let Some(v) = &u.description {

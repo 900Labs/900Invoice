@@ -141,6 +141,8 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 | `remove_line_item` | `{ id: string }` | `void` | Draft-only invoice check; recalculates totals. |
 | `reorder_line_items` | `{ orderedIds: string[] }` | `void` | Draft-only check based on first item. |
 
+Line items preserve `tax_rate_id` when supplied. Recalculation uses that tax-rate identity first, with `tax_rate_bps` as a backward-compatible fallback for older line items.
+
 ### Taxes
 
 | Command | Invoke Args | Returns | Notes |

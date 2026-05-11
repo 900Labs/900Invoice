@@ -120,14 +120,15 @@ pub fn generate_from_template(conn: &Connection, recurring_id: &str) -> Result<S
         let new_item_id = Uuid::new_v4().to_string();
         conn.execute(
             "INSERT INTO invoice_line_items (
-                id, invoice_id, product_id, description,
+                id, invoice_id, product_id, tax_rate_id, description,
                 quantity, unit_price_minor, tax_rate_bps, discount_bps,
                 line_total_minor, sort_order, created_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             rusqlite::params![
                 new_item_id,
                 new_invoice_id,
                 item.product_id,
+                item.tax_rate_id,
                 item.description,
                 item.quantity,
                 item.unit_price_minor,
@@ -284,6 +285,7 @@ struct InvoiceTemplate {
 
 struct LineItemTemplate {
     product_id: Option<String>,
+    tax_rate_id: Option<String>,
     description: String,
     quantity: i32,
     unit_price_minor: i64,
@@ -366,7 +368,7 @@ fn load_client_payment_terms(conn: &Connection, client_id: &str) -> Result<i64, 
 fn load_line_items(conn: &Connection, invoice_id: &str) -> Result<Vec<LineItemTemplate>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT product_id, description, quantity, unit_price_minor, \
+            "SELECT product_id, tax_rate_id, description, quantity, unit_price_minor, \
              tax_rate_bps, discount_bps, line_total_minor, sort_order \
              FROM invoice_line_items \
              WHERE invoice_id = ?1 \
@@ -378,13 +380,14 @@ fn load_line_items(conn: &Connection, invoice_id: &str) -> Result<Vec<LineItemTe
         .query_map(rusqlite::params![invoice_id], |row| {
             Ok(LineItemTemplate {
                 product_id: row.get(0)?,
-                description: row.get(1)?,
-                quantity: row.get(2)?,
-                unit_price_minor: row.get(3)?,
-                tax_rate_bps: row.get(4)?,
-                discount_bps: row.get(5)?,
-                line_total_minor: row.get(6)?,
-                sort_order: row.get(7)?,
+                tax_rate_id: row.get(1)?,
+                description: row.get(2)?,
+                quantity: row.get(3)?,
+                unit_price_minor: row.get(4)?,
+                tax_rate_bps: row.get(5)?,
+                discount_bps: row.get(6)?,
+                line_total_minor: row.get(7)?,
+                sort_order: row.get(8)?,
             })
         })
         .map_err(|e| format!("Failed to query line items: {e}"))?
@@ -604,9 +607,9 @@ mod tests {
         .expect("template invoice");
         conn.execute(
             "INSERT INTO invoice_line_items
-             (id, invoice_id, description, quantity, unit_price_minor, tax_rate_bps,
+             (id, invoice_id, tax_rate_id, description, quantity, unit_price_minor, tax_rate_bps,
               discount_bps, line_total_minor, sort_order)
-             VALUES ('line-1', 'template-1', 'Consulting', 100, 10000, 1600, 0, 10000, 0)",
+             VALUES ('line-1', 'template-1', 'tax-ke-vat', 'Consulting', 100, 10000, 1600, 0, 10000, 0)",
             [],
         )
         .expect("line item");

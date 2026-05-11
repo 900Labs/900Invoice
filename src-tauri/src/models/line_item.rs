@@ -5,6 +5,8 @@ pub struct LineItem {
     pub id: String,
     pub invoice_id: String,
     pub product_id: Option<String>,
+    #[serde(default)]
+    pub tax_rate_id: Option<String>,
     pub description: String,
     /// Quantity stored as integer * 100 (e.g. 100 = 1.00 unit, 150 = 1.50 units)
     pub quantity: i64,
@@ -20,6 +22,7 @@ pub struct LineItem {
 pub struct CreateLineItem {
     pub invoice_id: String,
     pub product_id: Option<String>,
+    pub tax_rate_id: Option<String>,
     pub description: String,
     pub quantity: Option<i64>,
     pub unit_price_minor: i64,
@@ -31,6 +34,7 @@ pub struct CreateLineItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateLineItem {
     pub product_id: Option<String>,
+    pub tax_rate_id: Option<String>,
     pub description: Option<String>,
     pub quantity: Option<i64>,
     pub unit_price_minor: Option<i64>,

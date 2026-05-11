@@ -1,5 +1,16 @@
 use rusqlite::{Connection, Result};
 
+fn column_exists(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
+    let columns = stmt.query_map([], |row| row.get::<_, String>(1))?;
+    for name in columns {
+        if name? == column {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 pub fn run_migrations(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         "
@@ -79,6 +90,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             id TEXT PRIMARY KEY,
             invoice_id TEXT NOT NULL,
             product_id TEXT,
+            tax_rate_id TEXT,
             description TEXT NOT NULL,
             quantity INTEGER NOT NULL DEFAULT 100,
             unit_price_minor INTEGER NOT NULL DEFAULT 0,
@@ -206,26 +218,39 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ",
     )?;
 
+    if !column_exists(conn, "invoice_line_items", "tax_rate_id")? {
+        conn.execute(
+            "ALTER TABLE invoice_line_items ADD COLUMN tax_rate_id TEXT",
+            [],
+        )?;
+    }
+
     // Insert default data (OR IGNORE so re-running is idempotent)
     conn.execute_batch(
         "
         INSERT OR IGNORE INTO invoice_sequences (sequence_name, prefix, next_number)
             VALUES ('default', 'INV', 1);
 
-        INSERT OR IGNORE INTO tax_rates (id, name, display_name, rate_bps, country_code, is_default) VALUES
-            ('tax-ke-vat',    'VAT',     'VAT @ 16%',     1600, 'KE',  1),
-            ('tax-ke-wht',    'WHT',     'WHT @ 5%',       500, 'KE',  0),
-            ('tax-ng-vat',    'VAT',     'VAT @ 7.5%',     750, 'NG',  1),
-            ('tax-za-vat',    'VAT',     'VAT @ 15%',     1500, 'ZA',  1),
-            ('tax-in-gst18',  'GST',     'GST @ 18%',     1800, 'IN',  1),
-            ('tax-in-gst5',   'GST',     'GST @ 5%',       500, 'IN',  0),
-            ('tax-gh-vat',    'VAT',     'VAT @ 15%',     1500, 'GH',  1),
-            ('tax-gh-nhil',   'NHIL',    'NHIL @ 2.5%',    250, 'GH',  0),
-            ('tax-gh-getfund','GETFund', 'GETFund @ 2.5%', 250, 'GH',  0),
-            ('tax-tz-vat',    'VAT',     'VAT @ 18%',     1800, 'TZ',  1),
-            ('tax-ug-vat',    'VAT',     'VAT @ 18%',     1800, 'UG',  1),
-            ('tax-xof-vat',   'VAT',     'VAT @ 18%',     1800, 'SN',  1),
-            ('tax-none',      'No Tax',  'No Tax',           0, NULL,  0);
+        INSERT OR IGNORE INTO tax_rates (id, name, display_name, rate_bps, country_code, is_default, is_withholding) VALUES
+            ('tax-ke-vat',    'VAT',     'VAT @ 16%',      1600, 'KE',  1, 0),
+            ('tax-ke-wht',    'WHT',     'WHT @ 5%',        500, 'KE',  0, 1),
+            ('tax-ng-vat',    'VAT',     'VAT @ 7.5%',      750, 'NG',  1, 0),
+            ('tax-ng-wht5',   'WHT',     'WHT @ 5%',        500, 'NG',  0, 1),
+            ('tax-ng-wht10',  'WHT',     'WHT @ 10%',      1000, 'NG',  0, 1),
+            ('tax-za-vat',    'VAT',     'VAT @ 15%',      1500, 'ZA',  1, 0),
+            ('tax-in-gst18',  'GST',     'GST @ 18%',      1800, 'IN',  1, 0),
+            ('tax-in-gst5',   'GST',     'GST @ 5%',        500, 'IN',  0, 0),
+            ('tax-gh-vat',    'VAT',     'VAT @ 15%',      1500, 'GH',  1, 0),
+            ('tax-gh-nhil',   'NHIL',    'NHIL @ 2.5%',     250, 'GH',  0, 0),
+            ('tax-gh-getfund','GETFund', 'GETFund @ 2.5%',  250, 'GH',  0, 0),
+            ('tax-tz-vat',    'VAT',     'VAT @ 18%',      1800, 'TZ',  1, 0),
+            ('tax-ug-vat',    'VAT',     'VAT @ 18%',      1800, 'UG',  1, 0),
+            ('tax-xof-vat',   'VAT',     'VAT @ 18%',      1800, 'SN',  1, 0),
+            ('tax-none',      'No Tax',  'No Tax',            0, NULL,  0, 0);
+
+        UPDATE tax_rates
+           SET is_withholding = 1
+         WHERE id IN ('tax-ke-wht', 'tax-ng-wht5', 'tax-ng-wht10');
 
         INSERT OR IGNORE INTO settings (key, value) VALUES
             ('locale',            '\"en\"'),
@@ -237,4 +262,36 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
     )?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::run_migrations;
+    use rusqlite::Connection;
+
+    #[test]
+    fn migrations_seed_withholding_rates_and_line_item_tax_rate_id() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_migrations(&conn).expect("migrations");
+
+        let tax_rate_id_exists: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('invoice_line_items') WHERE name='tax_rate_id'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("tax_rate_id column");
+        assert_eq!(tax_rate_id_exists, 1);
+
+        let withholding_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM tax_rates
+                 WHERE id IN ('tax-ke-wht', 'tax-ng-wht5', 'tax-ng-wht10')
+                   AND is_withholding=1",
+                [],
+                |row| row.get(0),
+            )
+            .expect("withholding tax count");
+        assert_eq!(withholding_count, 3);
+    }
 }
