@@ -1,6 +1,7 @@
 use crate::db;
 use crate::models::invoice::{CreateInvoice, UpdateInvoice};
 use crate::models::line_item::CreateLineItem;
+use crate::models::tax::CreateInvoiceTax;
 use crate::services::invoice_numbering;
 use crate::services::tax_calculator;
 use rusqlite::Connection;
@@ -87,6 +88,37 @@ pub fn finalize_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json:
     let updated = db::queries::invoices::get_with_details(&conn, &id)
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Invoice not found after finalize".to_string())?;
+    serde_json::to_value(updated).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn mark_invoice_sent(db: State<'_, DbConn>, id: String) -> Result<serde_json::Value, String> {
+    let conn = db.lock().map_err(|e| e.to_string())?;
+
+    let invoice = db::queries::invoices::get_by_id(&conn, &id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Invoice not found: {}", id))?;
+
+    if invoice.status == "sent" {
+        let current = db::queries::invoices::get_with_details(&conn, &id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Invoice not found after sent lookup".to_string())?;
+        return serde_json::to_value(current).map_err(|e| e.to_string());
+    }
+
+    if invoice.status != "finalized" {
+        return Err(format!(
+            "Cannot mark invoice as sent with status '{}'",
+            invoice.status
+        ));
+    }
+
+    db::queries::invoices::update_status(&conn, &id, "sent", Some("sent_at"))
+        .map_err(|e| e.to_string())?;
+
+    let updated = db::queries::invoices::get_with_details(&conn, &id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Invoice not found after mark sent".to_string())?;
     serde_json::to_value(updated).map_err(|e| e.to_string())
 }
 
@@ -191,6 +223,19 @@ pub fn recalculate_invoice_totals(conn: &Connection, invoice_id: &str) -> Result
         summary.total_minor - invoice.discount_minor,
     )
     .map_err(|e| e.to_string())?;
+
+    db::queries::taxes::delete_for_invoice(conn, invoice_id).map_err(|e| e.to_string())?;
+    for line in &summary.tax_lines {
+        let create_tax = CreateInvoiceTax {
+            invoice_id: invoice_id.to_string(),
+            tax_rate_id: line.tax_rate_id.clone(),
+            tax_name: line.tax_name.clone(),
+            tax_rate_bps: line.tax_rate_bps,
+            tax_amount_minor: line.tax_amount_minor,
+            is_withholding: line.is_withholding,
+        };
+        db::queries::taxes::insert_invoice_tax(conn, &create_tax).map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }

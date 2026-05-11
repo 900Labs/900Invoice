@@ -260,6 +260,7 @@
       terms,
       footer,
       lineItems: lineItems.map((item, i) => ({
+        id: isEditing ? item.tempId : undefined,
         productId: item.productId,
         description: item.description,
         quantity: item.quantity,
@@ -515,7 +516,7 @@
                     id: p.id,
                     name: p.name,
                     defaultPriceMinor: p.defaultPriceMinor,
-                    taxRateId: p.taxRateId,
+                    taxRateId: p.taxRateId ?? taxRates.find(rate => rate.rateBps === p.taxRateBps)?.id ?? null,
                   }))}
                   onupdate={(field, val) => updateLineItem(item.tempId, field, val)}
                   ondelete={() => removeLineItem(item.tempId)}

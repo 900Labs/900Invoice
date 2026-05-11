@@ -31,7 +31,7 @@
       description = product.description ?? '';
       defaultPrice = product.defaultPriceMinor / 100;
       currencyCode = product.currencyCode ?? 'USD';
-      taxRateId = product.taxRateId ?? null;
+      taxRateId = product.taxRateId ?? taxRates.find(rate => rate.rateBps === product.taxRateBps)?.id ?? null;
       unit = product.unit ?? 'pcs';
       isActive = product.isActive ?? true;
     }

@@ -61,6 +61,9 @@
     if (!clientId) {
       errors.clientId = t('validation.selectClient');
     }
+    if (!templateInvoiceId) {
+      errors.templateInvoiceId = t('validation.required').replace('{field}', t('recurring.templateInvoice'));
+    }
     if (Object.keys(errors).length > 0) return;
 
     const formData: RecurringFormData = {
@@ -89,12 +92,13 @@
 
   <div class="form-group mt-md">
     <label class="form-label" for="lbl-recurring-templateinvoice">{t('recurring.templateInvoice')}</label>
-    <select id="lbl-recurring-templateinvoice" class="select" bind:value={templateInvoiceId}>
+    <select id="lbl-recurring-templateinvoice" class="select {errors.templateInvoiceId ? 'error' : ''}" bind:value={templateInvoiceId}>
       <option value="">{t('common.none')}</option>
       {#each clientInvoices as inv}
         <option value={inv.id}>#{inv.invoiceNumber}</option>
       {/each}
     </select>
+    {#if errors.templateInvoiceId}<span class="form-error">{errors.templateInvoiceId}</span>{/if}
   </div>
 
   <div class="form-group mt-md">

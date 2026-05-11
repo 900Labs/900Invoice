@@ -1,6 +1,23 @@
 // Client store using Svelte 5 runes
 import { invoke } from '@tauri-apps/api/core';
 
+interface BackendClient {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+  country_code: string;
+  tax_id: string;
+  currency_code: string;
+  payment_terms_days: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -33,6 +50,42 @@ export interface CreateClient {
   notes: string;
 }
 
+function mapClient(client: BackendClient): Client {
+  return {
+    id: client.id,
+    name: client.name,
+    email: client.email,
+    phone: client.phone,
+    address: client.address,
+    city: client.city,
+    country: client.country,
+    countryCode: client.country_code,
+    taxId: client.tax_id,
+    currencyCode: client.currency_code,
+    paymentTermsDays: client.payment_terms_days,
+    notes: client.notes,
+    invoiceCount: 0,
+    outstandingMinor: 0,
+    createdAt: client.created_at,
+  };
+}
+
+function toBackendClient(data: Partial<CreateClient>) {
+  return {
+    ...(data.name !== undefined ? { name: data.name } : {}),
+    ...(data.email !== undefined ? { email: data.email } : {}),
+    ...(data.phone !== undefined ? { phone: data.phone } : {}),
+    ...(data.address !== undefined ? { address: data.address } : {}),
+    ...(data.city !== undefined ? { city: data.city } : {}),
+    ...(data.country !== undefined ? { country: data.country } : {}),
+    ...(data.countryCode !== undefined ? { country_code: data.countryCode } : {}),
+    ...(data.taxId !== undefined ? { tax_id: data.taxId } : {}),
+    ...(data.currencyCode !== undefined ? { currency_code: data.currencyCode } : {}),
+    ...(data.paymentTermsDays !== undefined ? { payment_terms_days: data.paymentTermsDays } : {}),
+    ...(data.notes !== undefined ? { notes: data.notes } : {}),
+  };
+}
+
 let clients = $state<Client[]>([]);
 let currentClient = $state<Client | null>(null);
 let loading = $state(false);
@@ -55,7 +108,8 @@ export async function loadClients() {
   loading = true;
   error = null;
   try {
-    clients = await invoke<Client[]>('list_clients');
+    const result = await invoke<BackendClient[]>('list_clients');
+    clients = result.map(mapClient);
   } catch (e) {
     error = String(e);
     clients = [];
@@ -68,7 +122,8 @@ export async function loadClient(id: string) {
   loading = true;
   error = null;
   try {
-    currentClient = await invoke<Client>('get_client', { id });
+    const result = await invoke<BackendClient>('get_client', { id });
+    currentClient = mapClient(result);
   } catch (e) {
     error = String(e);
     currentClient = null;
@@ -81,7 +136,8 @@ export async function createClient(data: CreateClient): Promise<Client | null> {
   loading = true;
   error = null;
   try {
-    const client = await invoke<Client>('create_client', { data });
+    const result = await invoke<BackendClient>('create_client', { client: toBackendClient(data) });
+    const client = mapClient(result);
     clients = [...clients, client];
     return client;
   } catch (e) {
@@ -96,7 +152,8 @@ export async function updateClient(id: string, data: Partial<CreateClient>): Pro
   loading = true;
   error = null;
   try {
-    const client = await invoke<Client>('update_client', { id, data });
+    const result = await invoke<BackendClient>('update_client', { id, update: toBackendClient(data) });
+    const client = mapClient(result);
     clients = clients.map(c => c.id === id ? client : c);
     if (currentClient?.id === id) currentClient = client;
     return client;

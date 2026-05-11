@@ -24,9 +24,10 @@
   let editingProduct = $state<Product | null>(null);
   let deletingProduct = $state<Product | null>(null);
 
-  function getTaxRateName(id: string | null): string {
-    if (!id) return '—';
-    const rate = taxRates.find(r => r.id === id);
+  function getTaxRateName(product: Product): string {
+    const rate = product.taxRateId
+      ? taxRates.find(r => r.id === product.taxRateId)
+      : taxRates.find(r => r.rateBps === product.taxRateBps);
     return rate ? `${rate.displayName} (${formatTaxRate(rate.rateBps)})` : '—';
   }
 
@@ -104,7 +105,7 @@
                 {formatCurrency(product.defaultPriceMinor, product.currencyCode)}
               </td>
               <td>{product.currencyCode}</td>
-              <td>{getTaxRateName(product.taxRateId)}</td>
+              <td>{getTaxRateName(product)}</td>
               <td>{product.unit}</td>
               <td>
                 <button

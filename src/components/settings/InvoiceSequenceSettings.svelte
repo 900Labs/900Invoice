@@ -1,10 +1,8 @@
 <script lang="ts">
   import { t } from '../../stores/i18nStore';
-  import { getSettings, updateSetting } from '../../stores/settingsStore';
   import { success } from '../../stores/toastStore';
   import { invoke } from '@tauri-apps/api/core';
-
-  let settings = $derived(getSettings());
+  import { onMount } from 'svelte';
 
   let prefix = $state('INV');
   let separator = $state('-');
@@ -45,6 +43,10 @@
       success(t('settings.saved'));
     }
   }
+
+  onMount(() => {
+    loadSequence();
+  });
 
   // Preview
   let preview = $derived((() => {

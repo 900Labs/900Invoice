@@ -8,7 +8,7 @@
   import LoadingSpinner from '../shared/LoadingSpinner.svelte';
   import {
     getCurrentInvoice, loadInvoice, finalizeInvoice, voidInvoice, deleteInvoice,
-    duplicateInvoice, recordPayment, getLoading
+    duplicateInvoice, recordPayment, markInvoiceSent, getLoading
   } from '../../stores/invoiceStore';
   import { formatCurrency } from '../../utils/currency';
   import { formatDate } from '../../utils/date';
@@ -57,6 +57,16 @@
     await voidInvoice(invoice.id);
     showConfirmVoid = false;
     success(t('common.success'));
+  }
+
+  async function handleMarkSent() {
+    if (!invoice) return;
+    const result = await markInvoiceSent(invoice.id);
+    if (result) {
+      success(t('common.success'));
+    } else {
+      toastError(t('common.error'));
+    }
   }
 
   async function handleDelete() {
@@ -113,6 +123,11 @@
           </button>
           <button class="btn btn-primary" onclick={() => showConfirmFinalize = true}>
             {t('invoices.finalize')}
+          </button>
+        {/if}
+        {#if invoice.status === 'Finalized'}
+          <button class="btn" onclick={handleMarkSent}>
+            {t('invoices.send')}
           </button>
         {/if}
         {#if invoice.status === 'Finalized' || invoice.status === 'Sent'}

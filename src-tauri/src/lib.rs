@@ -42,6 +42,7 @@ pub fn run() {
             commands::invoices::update_invoice,
             commands::invoices::delete_invoice,
             commands::invoices::finalize_invoice,
+            commands::invoices::mark_invoice_sent,
             commands::invoices::void_invoice,
             commands::invoices::duplicate_invoice,
             commands::invoices::search_invoices,

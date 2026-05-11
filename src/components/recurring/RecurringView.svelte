@@ -26,6 +26,17 @@
     status: 'active' | 'paused';
   }
 
+  interface BackendRecurringSchedule {
+    id: string;
+    client_id: string;
+    template_invoice_id: string;
+    frequency: string;
+    next_generation_date: string;
+    end_date: string | null;
+    auto_send: boolean;
+    status: 'active' | 'paused';
+  }
+
   let settings = $derived(getSettings());
   let schedules = $state<RecurringSchedule[]>([]);
   let loading = $state(false);
@@ -39,7 +50,19 @@
   async function loadSchedules() {
     loading = true;
     try {
-      schedules = await invoke<RecurringSchedule[]>('list_recurring');
+      const result = await invoke<BackendRecurringSchedule[]>('list_recurring');
+      const clients = getClients();
+      schedules = result.map(schedule => ({
+        id: schedule.id,
+        clientId: schedule.client_id,
+        clientName: clients.find(client => client.id === schedule.client_id)?.name ?? '',
+        templateInvoiceId: schedule.template_invoice_id,
+        frequency: schedule.frequency === 'annually' ? 'annual' : schedule.frequency,
+        nextDate: schedule.next_generation_date,
+        endDate: schedule.end_date ?? '',
+        autoSend: schedule.auto_send,
+        status: schedule.status,
+      }));
     } catch {
       schedules = [];
     } finally {
@@ -49,7 +72,16 @@
 
   async function handleCreate(data: RecurringFormData) {
     try {
-      await invoke('create_recurring', { data });
+      await invoke('create_recurring', {
+        recurring: {
+          client_id: data.clientId,
+          template_invoice_id: data.templateInvoiceId,
+          frequency: data.frequency === 'annual' ? 'annually' : data.frequency,
+          next_generation_date: data.startDate,
+          end_date: data.endDate || null,
+          auto_send: data.autoSend,
+        },
+      });
       await loadSchedules();
       showAddModal = false;
       success(t('common.success'));
@@ -85,6 +117,7 @@
       monthly: t('recurring.monthly'),
       quarterly: t('recurring.quarterly'),
       annual: t('recurring.annual'),
+      annually: t('recurring.annual'),
     };
     return map[freq] ?? freq;
   }

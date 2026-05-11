@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
 - Added runtime smoke verification script (`scripts/verify-runtime-smoke.sh`) and runbook (`docs/RUNTIME_SMOKE.md`) with legacy-hardware mode for low-resource validation.
+- Added `mark_invoice_sent` to complete the invoice Draft -> Finalized -> Sent lifecycle command surface.
 
 ### Changed
 
@@ -50,6 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enforces a 2MB size limit.
   - Copies assets into app-managed storage before persisting path references.
 - Hardened PDF logo loading with canonicalization, extension allowlist, and size checks.
+- Restored frontend/Tauri IPC parity for client, product, tax, settings, exchange-rate, recurring, invoice, line-item, and payment flows by mapping backend snake_case contracts at the store boundary.
+- Corrected model-backed invoice tax summaries to apply each line item's stored tax rate instead of applying every active tax rate to the full invoice subtotal.
+- Pinned `esrap@2.2.2` because `esrap@2.2.3` was missing its exported TypeScript printer files and blocked Svelte validation/builds.
 - Added CSV formula-injection mitigation for exports by neutralizing spreadsheet-evaluable leading characters.
 - Enforced draft-only mutation rules for invoice and line-item edit/delete operations.
 - Added payment validation and lifecycle protections:
