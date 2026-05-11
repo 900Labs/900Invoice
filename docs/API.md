@@ -121,13 +121,13 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 |---|---|---|---|
 | `list_invoices` | none | `Invoice[]` (JSON) | |
 | `get_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Includes line items, taxes, and payments. |
-| `create_invoice` | `{ invoice: CreateInvoice }` | `Invoice` (JSON) | Creates draft invoice. |
-| `update_invoice` | `{ id: string, update: UpdateInvoice }` | `Invoice` (JSON) | Draft-only mutation enforced. |
+| `create_invoice` | `{ invoice: CreateInvoice }` | `Invoice` (JSON) | Creates draft invoice and snapshots the cached rate to USD. |
+| `update_invoice` | `{ id: string, update: UpdateInvoice }` | `Invoice` (JSON) | Draft-only mutation enforced; currency/date changes refresh the cached rate snapshot. |
 | `delete_invoice` | `{ id: string }` | `void` | Draft-only mutation enforced. |
-| `finalize_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Requires draft status; assigns number when missing. |
+| `finalize_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Requires draft status; assigns number when missing and backfills a missing exchange-rate snapshot. |
 | `mark_invoice_sent` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Requires finalized status; stamps `sent_at`. |
 | `void_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Rejects already-void invoices. |
-| `duplicate_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Copies line items into a new draft invoice. |
+| `duplicate_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Copies line items into a new draft invoice with a fresh exchange-rate snapshot. |
 | `search_invoices` | `{ query: string }` | `Invoice[]` (JSON) | |
 
 ### Line Items
@@ -174,7 +174,7 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 | `create_recurring` | `{ recurring: CreateRecurring }` | `RecurringInvoice` (JSON) | |
 | `update_recurring` | `{ id: string, update: UpdateRecurring }` | `RecurringInvoice` (JSON) | |
 | `delete_recurring` | `{ id: string }` | `void` | |
-| `generate_due_recurring` | none | `InvoiceWithDetails[]` (JSON) | Generates invoices for schedules due today, copies template line items and tax rows, and advances schedules. |
+| `generate_due_recurring` | none | `InvoiceWithDetails[]` (JSON) | Generates invoices for schedules due today, copies template line items and tax rows, snapshots the generated invoice exchange rate, and advances schedules. |
 
 ### Products
 
@@ -195,6 +195,8 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 | `get_cached_rate` | `{ baseCurrency: string, targetCurrency: string, date?: string }` | `ExchangeRate \| null` (JSON) | Date defaults to current local date. |
 | `convert_currency` | `{ fromCurrency: string, toCurrency: string, amountMinor: number, date?: string }` | `ConversionResult` (JSON) | Uses cached rates; same-currency shortcut returns 1.0 rate. |
 | `upsert_exchange_rates` | `{ rates: ExchangeRate[] }` | `void` | Batch upsert. |
+
+Default offline exchange-rate rows are seeded during app startup. Invoice creation, draft currency/date updates, finalization backfill, duplication, and recurring generation store `exchange_rate_to_usd` plus `exchange_rate_date` on the invoice for audit history.
 
 ### Import / Export
 
