@@ -13,7 +13,7 @@
 
   <img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg">
   <img alt="Tauri" src="https://img.shields.io/badge/Tauri-v2-orange.svg">
-  <img alt="Rust" src="https://img.shields.io/badge/Rust-1.75+-orange.svg">
+  <img alt="Rust" src="https://img.shields.io/badge/Rust-1.88+-orange.svg">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg">
   <img alt="CI" src="https://github.com/900Labs/900Invoice/actions/workflows/ci.yml/badge.svg">
 </div>
@@ -111,7 +111,7 @@ Signed Windows, macOS, and Linux installers are tracked as future release harden
 
 **Prerequisites:**
 
-- Rust 1.75+ — install from [rustup.rs](https://rustup.rs)
+- Rust 1.88+ — install from [rustup.rs](https://rustup.rs)
 - Node.js 18+ — install from [nodejs.org](https://nodejs.org)
 - Tauri CLI v2 for `cargo tauri` commands:
   ```bash

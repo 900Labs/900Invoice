@@ -9,7 +9,7 @@ The current automated release workflow publishes source archives and checksums. 
 ## Prerequisites
 
 ### All Platforms
-- **Rust 1.75+**: [rustup.rs](https://rustup.rs)
+- **Rust 1.88+**: [rustup.rs](https://rustup.rs)
 - **Node.js 18+**: [nodejs.org](https://nodejs.org)
 - **Tauri CLI v2**: required for `cargo tauri` commands
   ```bash
