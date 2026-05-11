@@ -203,8 +203,8 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 | `import_clients_csv` | `{ csvContent: string }` | JSON object | Returns `{ imported, errors }`. |
 | `export_clients_csv` | none | `string` | CSV export; sanitizes formula-like cells. |
 | `export_invoices_csv` | none | `string` | CSV export; sanitizes formula-like cells for string cells. |
-| `backup_database` | none | JSON object | Exports app data snapshot (versioned object). |
-| `restore_database` | `{ backup: object }` | JSON object | Additive restore (`INSERT OR IGNORE`); does not drop existing rows. |
+| `backup_database` | none | JSON object | Exports a versioned app data snapshot including clients, invoices, line items, invoice taxes, payments, products, tax rates, settings, business profile, recurring schedules, exchange rates, and invoice sequences. |
+| `restore_database` | `{ backup: object }` | JSON object | Additive restore (`INSERT OR IGNORE`); does not drop or overwrite existing rows. Returns per-table inserted counts. |
 
 ### Settings
 

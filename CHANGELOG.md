@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restored frontend/Tauri IPC parity for client, product, tax, settings, exchange-rate, recurring, invoice, line-item, and payment flows by mapping backend snake_case contracts at the store boundary.
 - Corrected model-backed invoice tax summaries to apply each line item's stored tax rate instead of applying every active tax rate to the full invoice subtotal.
 - Pinned `esrap@2.2.2` because `esrap@2.2.3` was missing its exported TypeScript printer files and blocked Svelte validation/builds.
+- Wired Settings import/export actions to native file open/save dialogs for client CSV import/export, invoice CSV export, JSON backups, and JSON restore.
+- Expanded JSON database backups and additive restore to include invoice line items, invoice tax rows, payments, recurring schedules, exchange rates, settings, business profile, tax rates, products, clients, invoices, and invoice sequences.
 - Added CSV formula-injection mitigation for exports by neutralizing spreadsheet-evaluable leading characters.
 - Enforced draft-only mutation rules for invoice and line-item edit/delete operations.
 - Added payment validation and lifecycle protections:

@@ -4,11 +4,21 @@
   import InvoiceSequenceSettings from './InvoiceSequenceSettings.svelte';
   import CurrencySettings from './CurrencySettings.svelte';
   import { t, setLocale, getCurrentLocale, SUPPORTED_LOCALES } from '../../stores/i18nStore';
-  import { getSettings, updateSetting } from '../../stores/settingsStore';
-  import { success } from '../../stores/toastStore';
+  import {
+    getSettings, updateSetting, loadSettings, loadBusinessProfile
+  } from '../../stores/settingsStore';
+  import { loadClients } from '../../stores/clientStore';
+  import { loadInvoices } from '../../stores/invoiceStore';
+  import { loadProducts } from '../../stores/productStore';
+  import { loadTaxRates } from '../../stores/taxStore';
+  import { success, error as toastError } from '../../stores/toastStore';
   import { invoke } from '@tauri-apps/api/core';
+  import { open, save } from '@tauri-apps/plugin-dialog';
+  import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 
   type Tab = 'profile' | 'taxes' | 'invoiceNumbers' | 'currency' | 'general' | 'importExport';
+  type RestoreResult = { status: string; restored: Record<string, number> };
+  type ImportResult = { imported: number; errors: string[] };
 
   let activeTab = $state<Tab>('profile');
   let settings = $derived(getSettings());
@@ -37,41 +47,106 @@
     success(t('settings.saved'));
   }
 
+  function exportDateStamp() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function selectedPath(selection: string | string[] | null): string | null {
+    if (Array.isArray(selection)) return selection[0] ?? null;
+    return selection;
+  }
+
+  async function saveText(defaultPath: string, contents: string, extensions: string[]) {
+    const path = await save({
+      defaultPath,
+      filters: [{ name: extensions.join('/').toUpperCase(), extensions }],
+    });
+    if (!path) return false;
+    await writeTextFile(path, contents);
+    return true;
+  }
+
+  async function reloadImportedData() {
+    await Promise.all([
+      loadClients(),
+      loadInvoices(),
+      loadProducts(),
+      loadTaxRates(),
+      loadSettings(),
+      loadBusinessProfile(),
+    ]);
+  }
+
   async function handleImportClients() {
     try {
-      await invoke('import_clients_csv');
-      success(t('common.success'));
+      const path = selectedPath(await open({
+        multiple: false,
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+        fileAccessMode: 'scoped',
+      }));
+      if (!path) return;
+      const csvContent = await readTextFile(path);
+      const result = await invoke<ImportResult>('import_clients_csv', { csvContent });
+      await loadClients();
+      if (result.errors.length > 0) {
+        toastError(`${result.imported} imported, ${result.errors.length} failed`);
+      } else {
+        success(t('common.success'));
+      }
     } catch (e) {
-      // Trigger native file dialog via Tauri
+      toastError(String(e));
     }
   }
 
   async function handleExportClients() {
     try {
-      await invoke('export_clients_csv');
-      success(t('common.success'));
-    } catch {}
+      const csv = await invoke<string>('export_clients_csv');
+      const saved = await saveText(`900invoice-clients-${exportDateStamp()}.csv`, csv, ['csv']);
+      if (saved) success(t('common.success'));
+    } catch (e) {
+      toastError(String(e));
+    }
   }
 
   async function handleExportInvoices() {
     try {
-      await invoke('export_invoices_csv');
-      success(t('common.success'));
-    } catch {}
+      const csv = await invoke<string>('export_invoices_csv');
+      const saved = await saveText(`900invoice-invoices-${exportDateStamp()}.csv`, csv, ['csv']);
+      if (saved) success(t('common.success'));
+    } catch (e) {
+      toastError(String(e));
+    }
   }
 
   async function handleBackup() {
     try {
-      await invoke('backup_database');
-      success(t('common.success'));
-    } catch {}
+      const backup = await invoke<Record<string, unknown>>('backup_database');
+      const saved = await saveText(
+        `900invoice-backup-${exportDateStamp()}.json`,
+        JSON.stringify(backup, null, 2),
+        ['json']
+      );
+      if (saved) success(t('common.success'));
+    } catch (e) {
+      toastError(String(e));
+    }
   }
 
   async function handleRestore() {
     try {
-      await invoke('restore_database');
+      const path = selectedPath(await open({
+        multiple: false,
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+        fileAccessMode: 'scoped',
+      }));
+      if (!path) return;
+      const backup = JSON.parse(await readTextFile(path)) as Record<string, unknown>;
+      await invoke<RestoreResult>('restore_database', { backup });
+      await reloadImportedData();
       success(t('common.success'));
-    } catch {}
+    } catch (e) {
+      toastError(String(e));
+    }
   }
 </script>
 
