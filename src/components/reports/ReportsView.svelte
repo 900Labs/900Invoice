@@ -4,7 +4,7 @@
   import { daysUntilDue, getDateRange } from '../../utils/date';
   import { t } from '../../stores/i18nStore';
   import { getInvoices } from '../../stores/invoiceStore';
-  import { formatCurrency, formatTaxRate } from '../../utils/currency';
+  import { formatCurrency, formatTaxRate, getCurrencyConfig } from '../../utils/currency';
   import { getSettings } from '../../stores/settingsStore';
   import { success, error as toastError } from '../../stores/toastStore';
   import { save } from '@tauri-apps/plugin-dialog';
@@ -68,13 +68,26 @@
   ] as const;
 
   function csvEscape(value: string | number) {
-    return `"${String(value).replaceAll('"', '""')}"`;
+    let text = String(value);
+    if (/^[=+\-@\t\r]/.test(text)) {
+      text = `'${text}`;
+    }
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+
+  function formatCsvMoney(minor: number, currencyCode: string) {
+    const config = getCurrencyConfig(currencyCode);
+    return (minor / Math.pow(10, config.decimals)).toFixed(config.decimals);
   }
 
   function reportInvoices() {
     return invoices.filter(i =>
       i.issueDate >= dateRange.start && i.issueDate <= dateRange.end
     );
+  }
+
+  function paidReportInvoices() {
+    return reportInvoices().filter(i => i.status === 'Paid');
   }
 
   function agingBucket(dueDate: string) {
@@ -87,30 +100,48 @@
   }
 
   function buildRevenueRows(): string[][] {
+    const acc: Record<string, {
+      clientName: string;
+      currencyCode: string;
+      invoiceCount: number;
+      totalMinor: number;
+    }> = {};
+
+    for (const inv of paidReportInvoices()) {
+      const clientName = inv.clientName || t('invoices.client');
+      const key = `${clientName}::${inv.currencyCode}`;
+      if (!acc[key]) {
+        acc[key] = {
+          clientName,
+          currencyCode: inv.currencyCode,
+          invoiceCount: 0,
+          totalMinor: 0,
+        };
+      }
+      acc[key].invoiceCount += 1;
+      acc[key].totalMinor += inv.totalMinor;
+    }
+
+    const rows = Object.values(acc).sort((a, b) => {
+      const currencyOrder = a.currencyCode.localeCompare(b.currencyCode);
+      if (currencyOrder !== 0) return currencyOrder;
+      return b.totalMinor - a.totalMinor;
+    });
+
     return [
       [
-        t('invoices.number'),
         t('invoices.client'),
-        t('invoices.date'),
         t('invoices.currency'),
-        t('invoices.subtotal'),
-        t('invoices.taxTotal'),
-        t('invoices.total'),
-        t('invoices.amountPaid'),
-        t('invoices.balanceDue'),
-        t('invoices.status'),
+        t('reports.invoiceCount'),
+        t('reports.totalRevenue'),
+        t('reports.avgInvoice'),
       ],
-      ...reportInvoices().map(inv => [
-        inv.invoiceNumber,
-        inv.clientName,
-        inv.issueDate,
-        inv.currencyCode,
-        (inv.subtotalMinor / 100).toFixed(2),
-        (inv.taxTotalMinor / 100).toFixed(2),
-        (inv.totalMinor / 100).toFixed(2),
-        (inv.amountPaidMinor / 100).toFixed(2),
-        (inv.balanceDueMinor / 100).toFixed(2),
-        inv.status,
+      ...rows.map(row => [
+        row.clientName,
+        row.currencyCode,
+        String(row.invoiceCount),
+        formatCsvMoney(row.totalMinor, row.currencyCode),
+        formatCsvMoney(Math.round(row.totalMinor / row.invoiceCount), row.currencyCode),
       ]),
     ];
   }
@@ -122,8 +153,8 @@
         row.displayName,
         formatTaxRate(row.rateBps),
         row.currencyCode,
-        (row.totalBaseMinor / 100).toFixed(2),
-        (row.totalTaxMinor / 100).toFixed(2),
+        formatCsvMoney(row.totalBaseMinor, row.currencyCode),
+        formatCsvMoney(row.totalTaxMinor, row.currencyCode),
       ]),
     ];
   }
@@ -138,7 +169,7 @@
         inv.dueDate,
         agingBucket(inv.dueDate),
         inv.currencyCode,
-        (inv.balanceDueMinor / 100).toFixed(2),
+        formatCsvMoney(inv.balanceDueMinor, inv.currencyCode),
       ]),
     ];
   }

@@ -33,6 +33,36 @@
     }, {} as Record<string, number>)
   );
 
+  interface ClientRevenue {
+    clientName: string;
+    currencyCode: string;
+    invoiceCount: number;
+    totalMinor: number;
+  }
+
+  let byClient = $derived((() => {
+    const acc: Record<string, ClientRevenue> = {};
+    for (const inv of periodInvoices) {
+      const clientName = inv.clientName || t('invoices.client');
+      const key = `${clientName}::${inv.currencyCode}`;
+      if (!acc[key]) {
+        acc[key] = {
+          clientName,
+          currencyCode: inv.currencyCode,
+          invoiceCount: 0,
+          totalMinor: 0,
+        };
+      }
+      acc[key].invoiceCount += 1;
+      acc[key].totalMinor += inv.totalMinor;
+    }
+    return Object.values(acc).sort((a, b) => {
+      const currencyOrder = a.currencyCode.localeCompare(b.currencyCode);
+      if (currencyOrder !== 0) return currencyOrder;
+      return b.totalMinor - a.totalMinor;
+    });
+  })());
+
   // Simple bar chart: group by week or month bucket
   interface Bucket {
     label: string;
@@ -93,6 +123,38 @@
   {:else}
     <div class="no-data">
       <p>{t('common.noResults')}</p>
+    </div>
+  {/if}
+
+  {#if byClient.length > 0}
+    <div class="client-breakdown">
+      <h3>{t('reports.revenueByClient')}</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>{t('invoices.client')}</th>
+            <th>{t('invoices.currency')}</th>
+            <th style="text-align: end;">{t('reports.invoiceCount')}</th>
+            <th style="text-align: end;">{t('reports.totalRevenue')}</th>
+            <th style="text-align: end;">{t('reports.avgInvoice')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each byClient as row}
+            <tr>
+              <td>{row.clientName}</td>
+              <td>{row.currencyCode}</td>
+              <td style="text-align: end;">{row.invoiceCount}</td>
+              <td style="text-align: end;" class="currency">
+                {formatCurrency(row.totalMinor, row.currencyCode)}
+              </td>
+              <td style="text-align: end;" class="currency">
+                {formatCurrency(Math.round(row.totalMinor / row.invoiceCount), row.currencyCode)}
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
   {/if}
 </div>
@@ -185,5 +247,17 @@
     padding: var(--space-2xl);
     color: var(--color-text-muted);
     font-size: var(--font-size-sm);
+  }
+
+  .client-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .client-breakdown h3 {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
   }
 </style>
