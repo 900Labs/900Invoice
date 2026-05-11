@@ -1,6 +1,8 @@
 # Deployment Guide
 
-This guide covers building 900Invoice from source and distributing it for all supported platforms: Windows, macOS, and Linux.
+This guide covers building 900Invoice from source on Windows, macOS, and Linux, plus distribution options for maintainers.
+
+The current automated release workflow publishes source archives and checksums. Signed platform-specific installers, notarization, and auto-update delivery are future release hardening items.
 
 ---
 
@@ -81,7 +83,7 @@ npm install
 cargo tauri build
 ```
 
-Build output is in `src-tauri/target/release/bundle/`:
+Local `cargo tauri build` output is written under `src-tauri/target/release/bundle/`. Exact artifacts vary by host OS, target architecture, and local Tauri bundler configuration. Typical local outputs include:
 
 | Platform | Output Location | File |
 |----------|----------------|------|
@@ -131,7 +133,7 @@ cargo tauri build --target aarch64-apple-darwin
 cargo tauri build --target universal-apple-darwin
 ```
 
-The CI/CD release workflow builds a universal binary for maximum compatibility.
+The current CI/CD release workflow does not build or publish macOS binaries. Maintainers can build universal binaries locally with the command above until platform build jobs are added.
 
 **macOS Gatekeeper**: Unsigned `.app` bundles will be blocked by Gatekeeper on macOS 12+. Users can bypass this with:
 ```bash
@@ -213,7 +215,7 @@ WINDOWS_CERTIFICATE_PASSWORD
 
 ## Auto-Update Configuration
 
-900Invoice supports Tauri's built-in auto-update mechanism. To enable it:
+900Invoice does not currently enable Tauri auto-update in `tauri.conf.json` or ship an updater plugin dependency. The outline below is retained for future hardening work if signed platform binaries are added.
 
 ### 1. Set up an update endpoint
 
