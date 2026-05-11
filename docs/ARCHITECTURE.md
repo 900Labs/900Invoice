@@ -265,13 +265,15 @@ total:       1_200_000  (KES 12,000.00)
 Recurring generation is owned by `src-tauri/src/services/recurring_scheduler.rs`.
 
 ```
-Manual generation or due processing:
+Startup, hourly, or manual due processing:
   1. Load active recurring schedules with next_generation_date <= today
   2. For each due schedule, load its finalized template invoice
   3. Copy template totals, line items, and invoice tax rows into a new draft
   4. Advance next_generation_date from the scheduled date by the frequency
   5. Mark schedules completed when their configured end_date is passed
 ```
+
+At app startup, setup runs the due processor immediately after database initialization. The app then starts a lightweight hourly background worker that re-runs the same due processor while the desktop process remains open. The Recurring view's manual **Generate Now** action calls the same scheduler service.
 
 Supported frequency values are weekly, biweekly, monthly, quarterly, annual, annually, and yearly.
 

@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated report CSV export to save through a native file dialog and export rows for the active revenue, tax, or aging report.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.
+- Enabled recurring due processing on app startup and an hourly in-process worker for missed-job recovery while the app is open.
 - Added CSV formula-injection mitigation for exports by neutralizing spreadsheet-evaluable leading characters.
 - Enforced draft-only mutation rules for invoice and line-item edit/delete operations.
 - Added payment validation and lifecycle protections:
