@@ -91,7 +91,7 @@ pub fn convert_currency(
     serde_json::to_value(result).map_err(|e| e.to_string())
 }
 
-/// Upsert a batch of exchange rates (e.g. from an external API call on the frontend).
+/// Upsert a batch of exchange rates supplied by import or future refresh tooling.
 #[tauri::command]
 pub fn upsert_exchange_rates(
     db: State<'_, DbConn>,
