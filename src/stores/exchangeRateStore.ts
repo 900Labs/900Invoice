@@ -1,6 +1,14 @@
 // Exchange rate store using Svelte 5 runes
 import { invoke } from '@tauri-apps/api/core';
 
+interface BackendExchangeRate {
+  base_currency: string;
+  target_currency: string;
+  rate: number;
+  fetched_at: string;
+  valid_date: string;
+}
+
 export interface ExchangeRate {
   fromCurrency: string;
   toCurrency: string;
@@ -12,6 +20,15 @@ let rates = $state<ExchangeRate[]>([]);
 let loading = $state(false);
 let error = $state<string | null>(null);
 
+function mapExchangeRate(rate: BackendExchangeRate): ExchangeRate {
+  return {
+    fromCurrency: rate.base_currency,
+    toCurrency: rate.target_currency,
+    rate: rate.rate,
+    updatedAt: rate.fetched_at || rate.valid_date,
+  };
+}
+
 let lastUpdated = $derived(
   rates.length > 0
     ? rates.reduce((latest, r) =>
@@ -21,11 +38,12 @@ let lastUpdated = $derived(
     : null
 );
 
-export async function loadRates() {
+export async function loadRates(baseCurrency = 'USD') {
   loading = true;
   error = null;
   try {
-    rates = await invoke<ExchangeRate[]>('get_exchange_rates');
+    const result = await invoke<BackendExchangeRate[]>('get_exchange_rates', { baseCurrency });
+    rates = result.map(mapExchangeRate);
   } catch (e) {
     error = String(e);
     rates = [];

@@ -16,6 +16,11 @@ import { invoke } from '@tauri-apps/api/core';
 const result = await invoke('get_invoice', { id: invoiceId });
 ```
 
+Tauri command argument names use the macro default `camelCase` at the outer
+`invoke()` boundary. Nested model payloads retain the Rust/serde field names
+shown in `src-tauri/src/models/*.rs` unless a model explicitly declares a serde
+rename rule.
+
 All commands return `Result<T, String>` in Rust. On the frontend, failures reject with an error string.
 
 ---
@@ -39,6 +44,7 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 - `update_invoice`
 - `delete_invoice`
 - `finalize_invoice`
+- `mark_invoice_sent`
 - `void_invoice`
 - `duplicate_invoice`
 - `search_invoices`
@@ -119,6 +125,7 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 | `update_invoice` | `{ id: string, update: UpdateInvoice }` | `Invoice` (JSON) | Draft-only mutation enforced. |
 | `delete_invoice` | `{ id: string }` | `void` | Draft-only mutation enforced. |
 | `finalize_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Requires draft status; assigns number when missing. |
+| `mark_invoice_sent` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Requires finalized status; stamps `sent_at`. |
 | `void_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Rejects already-void invoices. |
 | `duplicate_invoice` | `{ id: string }` | `InvoiceWithDetails` (JSON) | Copies line items into a new draft invoice. |
 | `search_invoices` | `{ query: string }` | `Invoice[]` (JSON) | |
@@ -127,37 +134,37 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 
 | Command | Invoke Args | Returns | Notes |
 |---|---|---|---|
-| `add_line_item` | `{ line_item: CreateLineItem }` | `LineItem` (JSON) | Draft-only invoice check; recalculates invoice totals. |
+| `add_line_item` | `{ lineItem: CreateLineItem }` | `LineItem` (JSON) | Draft-only invoice check; recalculates invoice totals and tax rows. |
 | `update_line_item` | `{ id: string, update: UpdateLineItem }` | `LineItem` (JSON) | Draft-only invoice check; recalculates totals. |
 | `remove_line_item` | `{ id: string }` | `void` | Draft-only invoice check; recalculates totals. |
-| `reorder_line_items` | `{ ordered_ids: string[] }` | `void` | Draft-only check based on first item. |
+| `reorder_line_items` | `{ orderedIds: string[] }` | `void` | Draft-only check based on first item. |
 
 ### Taxes
 
 | Command | Invoke Args | Returns | Notes |
 |---|---|---|---|
 | `list_tax_rates` | none | `TaxRate[]` (JSON) | |
-| `create_tax_rate` | `{ tax_rate: CreateTaxRate }` | `TaxRate` (JSON) | |
+| `create_tax_rate` | `{ taxRate: CreateTaxRate }` | `TaxRate` (JSON) | |
 | `update_tax_rate` | `{ id: string, update: UpdateTaxRate }` | `TaxRate` (JSON) | |
 | `delete_tax_rate` | `{ id: string }` | `void` | |
-| `get_tax_rates_for_country` | `{ country_code: string }` | `TaxRate[]` (JSON) | |
-| `calculate_invoice_taxes` | `{ invoice_id: string }` | `InvoiceTax[]` (JSON) | Replaces persisted invoice tax rows and updates totals. |
+| `get_tax_rates_for_country` | `{ countryCode: string }` | `TaxRate[]` (JSON) | |
+| `calculate_invoice_taxes` | `{ invoiceId: string }` | `InvoiceTax[]` (JSON) | Replaces persisted invoice tax rows and updates totals. |
 
 ### PDF
 
 | Command | Invoke Args | Returns | Notes |
 |---|---|---|---|
-| `generate_invoice_pdf` | `{ invoice_id: string }` | `string` | Returns base64-encoded HTML payload (current implementation). |
-| `get_pdf_preview_data` | `{ invoice_id: string }` | JSON object | Includes `invoice`, `business`, `html`, and `preview`. |
+| `generate_invoice_pdf` | `{ invoiceId: string }` | `string` | Returns base64-encoded HTML payload (current implementation). |
+| `get_pdf_preview_data` | `{ invoiceId: string }` | JSON object | Includes `invoice`, `business`, `html`, and `preview`. |
 
 ### Payments
 
 | Command | Invoke Args | Returns | Notes |
 |---|---|---|---|
-| `list_payments` | `{ invoice_id: string }` | `Payment[]` (JSON) | |
+| `list_payments` | `{ invoiceId: string }` | `Payment[]` (JSON) | |
 | `record_payment` | `{ payment: CreatePayment }` | `Payment` (JSON) | Requires `amount_minor > 0`, invoice not `draft`/`void`, and currency match. |
 | `delete_payment` | `{ id: string }` | `void` | Recomputes invoice paid totals; may revert status from `paid`. |
-| `get_invoice_payment_summary` | `{ invoice_id: string }` | `PaymentSummary` (JSON) | |
+| `get_invoice_payment_summary` | `{ invoiceId: string }` | `PaymentSummary` (JSON) | |
 
 ### Recurring
 
@@ -184,16 +191,16 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 
 | Command | Invoke Args | Returns | Notes |
 |---|---|---|---|
-| `get_exchange_rates` | `{ base_currency: string }` | `ExchangeRate[]` (JSON) | Returns latest rates for base currency. |
-| `get_cached_rate` | `{ base_currency: string, target_currency: string, date?: string }` | `ExchangeRate \| null` (JSON) | Date defaults to current local date. |
-| `convert_currency` | `{ from_currency: string, to_currency: string, amount_minor: number, date?: string }` | `ConversionResult` (JSON) | Uses cached rates; same-currency shortcut returns 1.0 rate. |
+| `get_exchange_rates` | `{ baseCurrency: string }` | `ExchangeRate[]` (JSON) | Returns latest rates for base currency. |
+| `get_cached_rate` | `{ baseCurrency: string, targetCurrency: string, date?: string }` | `ExchangeRate \| null` (JSON) | Date defaults to current local date. |
+| `convert_currency` | `{ fromCurrency: string, toCurrency: string, amountMinor: number, date?: string }` | `ConversionResult` (JSON) | Uses cached rates; same-currency shortcut returns 1.0 rate. |
 | `upsert_exchange_rates` | `{ rates: ExchangeRate[] }` | `void` | Batch upsert. |
 
 ### Import / Export
 
 | Command | Invoke Args | Returns | Notes |
 |---|---|---|---|
-| `import_clients_csv` | `{ csv_content: string }` | JSON object | Returns `{ imported, errors }`. |
+| `import_clients_csv` | `{ csvContent: string }` | JSON object | Returns `{ imported, errors }`. |
 | `export_clients_csv` | none | `string` | CSV export; sanitizes formula-like cells. |
 | `export_invoices_csv` | none | `string` | CSV export; sanitizes formula-like cells for string cells. |
 | `backup_database` | none | JSON object | Exports app data snapshot (versioned object). |

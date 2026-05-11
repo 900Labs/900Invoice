@@ -218,20 +218,48 @@ pub fn calculate_invoice_taxes_from_models(
 ) -> DbInvoiceTaxSummary {
     let subtotal_minor: i64 = line_items.iter().map(|li| li.line_total_minor).sum();
 
-    let mut tax_lines: Vec<TaxLineEntry> = Vec::new();
-    for rate in tax_rates {
-        if !rate.is_active {
+    let mut grouped: HashMap<(Option<String>, String, i32, bool), i64> = HashMap::new();
+    for item in line_items {
+        if item.tax_rate_bps == 0 {
             continue;
         }
-        let tax_amount = calculate_line_tax(subtotal_minor, rate.rate_bps, is_inclusive);
-        tax_lines.push(TaxLineEntry {
-            tax_rate_id: Some(rate.id.clone()),
-            tax_name: rate.display_name.clone(),
-            tax_rate_bps: rate.rate_bps,
-            tax_amount_minor: tax_amount,
-            is_withholding: rate.is_withholding,
-        });
+
+        let matched_rate = tax_rates
+            .iter()
+            .find(|rate| rate.is_active && rate.rate_bps == item.tax_rate_bps);
+        let tax_rate_id = matched_rate.map(|rate| rate.id.clone());
+        let tax_name = matched_rate
+            .map(|rate| rate.display_name.clone())
+            .unwrap_or_else(|| format!("Tax @ {:.2}%", item.tax_rate_bps as f64 / 100.0));
+        let is_withholding = matched_rate
+            .map(|rate| rate.is_withholding)
+            .unwrap_or(false);
+        let tax_amount = calculate_line_tax(item.line_total_minor, item.tax_rate_bps, is_inclusive);
+
+        *grouped
+            .entry((tax_rate_id, tax_name, item.tax_rate_bps, is_withholding))
+            .or_insert(0) += tax_amount;
     }
+
+    let mut tax_lines: Vec<TaxLineEntry> = grouped
+        .into_iter()
+        .map(
+            |((tax_rate_id, tax_name, tax_rate_bps, is_withholding), tax_amount_minor)| {
+                TaxLineEntry {
+                    tax_rate_id,
+                    tax_name,
+                    tax_rate_bps,
+                    tax_amount_minor,
+                    is_withholding,
+                }
+            },
+        )
+        .collect();
+    tax_lines.sort_by(|a, b| {
+        a.tax_name
+            .cmp(&b.tax_name)
+            .then(a.tax_rate_bps.cmp(&b.tax_rate_bps))
+    });
 
     let non_wht: i64 = tax_lines
         .iter()
@@ -266,6 +294,38 @@ pub fn calculate_invoice_taxes_from_models(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_line_item(id: &str, line_total_minor: i64, tax_rate_bps: i32) -> LineItem {
+        LineItem {
+            id: id.to_string(),
+            invoice_id: "invoice-1".to_string(),
+            product_id: None,
+            description: "Service".to_string(),
+            quantity: 100,
+            unit_price_minor: line_total_minor,
+            tax_rate_bps,
+            discount_bps: 0,
+            line_total_minor,
+            sort_order: 0,
+            created_at: "2026-05-11T00:00:00Z".to_string(),
+        }
+    }
+
+    fn test_tax_rate(id: &str, display_name: &str, rate_bps: i32, is_withholding: bool) -> TaxRate {
+        TaxRate {
+            id: id.to_string(),
+            name: display_name.to_string(),
+            display_name: display_name.to_string(),
+            rate_bps,
+            country_code: None,
+            is_default: false,
+            is_withholding,
+            is_inclusive: false,
+            is_active: true,
+            created_at: "2026-05-11T00:00:00Z".to_string(),
+            updated_at: "2026-05-11T00:00:00Z".to_string(),
+        }
+    }
 
     // --- calculate_line_tax ---
 
@@ -426,5 +486,25 @@ mod tests {
         let s = calculate_invoice_taxes(&lines, 0, false);
         assert_eq!(s.total_tax_minor, 0);
         assert_eq!(s.total_minor, 50_000);
+    }
+
+    #[test]
+    fn test_model_invoice_uses_line_item_tax_rates() {
+        let line_items = vec![
+            test_line_item("line-1", 10_000, 1600),
+            test_line_item("line-2", 20_000, 0),
+        ];
+        let tax_rates = vec![
+            test_tax_rate("vat", "VAT @ 16%", 1600, false),
+            test_tax_rate("gst", "GST @ 18%", 1800, false),
+        ];
+
+        let s = calculate_invoice_taxes_from_models(&line_items, &tax_rates, false);
+
+        assert_eq!(s.subtotal_minor, 30_000);
+        assert_eq!(s.tax_lines.len(), 1);
+        assert_eq!(s.tax_lines[0].tax_rate_id.as_deref(), Some("vat"));
+        assert_eq!(s.tax_lines[0].tax_amount_minor, 1_600);
+        assert_eq!(s.total_minor, 31_600);
     }
 }

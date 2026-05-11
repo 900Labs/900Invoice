@@ -1,6 +1,20 @@
 // Tax store using Svelte 5 runes
 import { invoke } from '@tauri-apps/api/core';
 
+interface BackendTaxRate {
+  id: string;
+  name: string;
+  display_name: string;
+  rate_bps: number;
+  country_code: string | null;
+  is_default: boolean;
+  is_withholding: boolean;
+  is_inclusive: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TaxRate {
   id: string;
   name: string;
@@ -23,6 +37,32 @@ export interface CreateTaxRate {
   isInclusive: boolean;
 }
 
+function mapTaxRate(rate: BackendTaxRate): TaxRate {
+  return {
+    id: rate.id,
+    name: rate.name,
+    displayName: rate.display_name,
+    rateBps: rate.rate_bps,
+    country: rate.country_code ?? '',
+    isDefault: rate.is_default,
+    isWithholding: rate.is_withholding,
+    isInclusive: rate.is_inclusive,
+    isActive: rate.is_active,
+  };
+}
+
+function toBackendTaxRate(data: Partial<CreateTaxRate>) {
+  return {
+    ...(data.name !== undefined ? { name: data.name } : {}),
+    ...(data.displayName !== undefined ? { display_name: data.displayName } : {}),
+    ...(data.rateBps !== undefined ? { rate_bps: data.rateBps } : {}),
+    ...(data.country !== undefined ? { country_code: data.country || null } : {}),
+    ...(data.isDefault !== undefined ? { is_default: data.isDefault } : {}),
+    ...(data.isWithholding !== undefined ? { is_withholding: data.isWithholding } : {}),
+    ...(data.isInclusive !== undefined ? { is_inclusive: data.isInclusive } : {}),
+  };
+}
+
 let taxRates = $state<TaxRate[]>([]);
 let loading = $state(false);
 let error = $state<string | null>(null);
@@ -41,7 +81,8 @@ export async function loadTaxRates() {
   loading = true;
   error = null;
   try {
-    taxRates = await invoke<TaxRate[]>('list_tax_rates');
+    const result = await invoke<BackendTaxRate[]>('list_tax_rates');
+    taxRates = result.map(mapTaxRate);
   } catch (e) {
     error = String(e);
     taxRates = [];
@@ -54,7 +95,8 @@ export async function createTaxRate(data: CreateTaxRate): Promise<TaxRate | null
   loading = true;
   error = null;
   try {
-    const rate = await invoke<TaxRate>('create_tax_rate', { data });
+    const result = await invoke<BackendTaxRate>('create_tax_rate', { taxRate: toBackendTaxRate(data) });
+    const rate = mapTaxRate(result);
     taxRates = [...taxRates, rate];
     return rate;
   } catch (e) {
@@ -69,7 +111,8 @@ export async function updateTaxRate(id: string, data: Partial<CreateTaxRate>): P
   loading = true;
   error = null;
   try {
-    const rate = await invoke<TaxRate>('update_tax_rate', { id, data });
+    const result = await invoke<BackendTaxRate>('update_tax_rate', { id, update: toBackendTaxRate(data) });
+    const rate = mapTaxRate(result);
     taxRates = taxRates.map(t => t.id === id ? rate : t);
     return rate;
   } catch (e) {
