@@ -1,5 +1,5 @@
 use crate::db;
-use crate::models::invoice::{CreateInvoice, UpdateInvoice};
+use crate::models::invoice::{CreateInvoice, InvoiceWithDetails, UpdateInvoice};
 use crate::models::line_item::CreateLineItem;
 use crate::models::tax::CreateInvoiceTax;
 use crate::services::exchange_rate_snapshot;
@@ -150,8 +150,12 @@ pub fn void_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json::Val
 #[tauri::command]
 pub fn duplicate_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
+    let with_details = duplicate_invoice_record(&conn, &id)?;
+    serde_json::to_value(with_details).map_err(|e| e.to_string())
+}
 
-    let original = db::queries::invoices::get_with_details(&conn, &id)
+fn duplicate_invoice_record(conn: &Connection, id: &str) -> Result<InvoiceWithDetails, String> {
+    let original = db::queries::invoices::get_with_details(conn, id)
         .map_err(|e| e.to_string())?
         .ok_or_else(|| format!("Invoice not found: {}", id))?;
 
@@ -170,8 +174,8 @@ pub fn duplicate_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json
         exchange_rate_to_usd: None,
         exchange_rate_date: None,
     };
-    apply_create_exchange_rate_snapshot(&conn, &mut new_invoice)?;
-    let created = db::queries::invoices::insert(&conn, &new_invoice).map_err(|e| e.to_string())?;
+    apply_create_exchange_rate_snapshot(conn, &mut new_invoice)?;
+    let created = db::queries::invoices::insert(conn, &new_invoice).map_err(|e| e.to_string())?;
 
     // Copy line items
     for li in &original.line_items {
@@ -186,13 +190,14 @@ pub fn duplicate_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json
             discount_bps: Some(li.discount_bps),
             sort_order: Some(li.sort_order),
         };
-        db::queries::line_items::insert(&conn, &new_li).map_err(|e| e.to_string())?;
+        db::queries::line_items::insert(conn, &new_li).map_err(|e| e.to_string())?;
     }
 
-    let with_details = db::queries::invoices::get_with_details(&conn, &created.id)
+    recalculate_invoice_totals(conn, &created.id)?;
+
+    db::queries::invoices::get_with_details(conn, &created.id)
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| "Duplicated invoice not found".to_string())?;
-    serde_json::to_value(with_details).map_err(|e| e.to_string())
+        .ok_or_else(|| "Duplicated invoice not found".to_string())
 }
 
 #[tauri::command]
@@ -356,4 +361,75 @@ pub fn ensure_invoice_is_draft(conn: &Connection, invoice_id: &str) -> Result<()
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::duplicate_invoice_record;
+    use crate::db::migrations;
+    use rusqlite::Connection;
+
+    fn test_conn() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        migrations::run_migrations(&conn).expect("migrations");
+        conn
+    }
+
+    #[test]
+    fn duplicate_invoice_recalculates_totals_and_tax_rows() {
+        let conn = test_conn();
+
+        conn.execute(
+            "INSERT INTO clients (id, name, currency_code, payment_terms_days)
+             VALUES ('client-1', 'Acme Limited', 'USD', 14)",
+            [],
+        )
+        .expect("client");
+        conn.execute(
+            "INSERT INTO invoices
+                (id, invoice_number, client_id, status, currency_code, subtotal_minor,
+                 discount_minor, tax_amount_minor, total_minor, amount_paid_minor,
+                 exchange_rate_to_usd, exchange_rate_date, issue_date, due_date,
+                 uses_inclusive_taxes, notes, terms, footer)
+             VALUES
+                ('invoice-1', 'INV-2026-0001', 'client-1', 'finalized', 'USD',
+                 10000, 0, 1600, 11600, 0, 1.0, '2026-05-11',
+                 '2026-05-11', '2026-05-25', 0, 'Source notes', 'Net 14', '')",
+            [],
+        )
+        .expect("invoice");
+        conn.execute(
+            "INSERT INTO invoice_line_items
+                (id, invoice_id, product_id, tax_rate_id, description, quantity,
+                 unit_price_minor, tax_rate_bps, discount_bps, line_total_minor,
+                 sort_order)
+             VALUES
+                ('line-1', 'invoice-1', NULL, 'tax-ke-vat', 'Consulting',
+                 100, 10000, 1600, 0, 10000, 0)",
+            [],
+        )
+        .expect("line item");
+
+        let duplicated = duplicate_invoice_record(&conn, "invoice-1").expect("duplicated invoice");
+
+        assert_ne!(duplicated.id, "invoice-1");
+        assert_eq!(duplicated.invoice_number, None);
+        assert_eq!(duplicated.status, "draft");
+        assert_eq!(duplicated.client_id, "client-1");
+        assert_eq!(duplicated.subtotal_minor, 10000);
+        assert_eq!(duplicated.discount_minor, 0);
+        assert_eq!(duplicated.tax_amount_minor, 1600);
+        assert_eq!(duplicated.total_minor, 11600);
+        assert_eq!(duplicated.line_items.len(), 1);
+        assert_eq!(
+            duplicated.line_items[0].tax_rate_id.as_deref(),
+            Some("tax-ke-vat")
+        );
+        assert_eq!(duplicated.taxes.len(), 1);
+        assert_eq!(
+            duplicated.taxes[0].tax_rate_id.as_deref(),
+            Some("tax-ke-vat")
+        );
+        assert_eq!(duplicated.taxes[0].tax_amount_minor, 1600);
+    }
 }
