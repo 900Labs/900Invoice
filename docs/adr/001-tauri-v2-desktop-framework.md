@@ -20,9 +20,9 @@ We evaluated three frameworks: **Tauri v2**, **Electron**, and **Wails**.
 
 | Metric | Tauri v2 | Electron | Notes |
 |--------|----------|----------|-------|
-| Binary Size | 2.5–3 MB | 150–200+ MB | Electron bundles Chromium |
-| RAM (idle) | 30–40 MB | 150–300+ MB | Electron runs a full browser process |
-| Startup Time | < 500 ms | 1–3 seconds | Electron has heavier initialization |
+| Binary Size | Small native bundle | 150–200+ MB | Electron bundles Chromium |
+| RAM (idle) | Lower idle memory profile | 150–300+ MB | Electron runs a full browser process |
+| Startup Time | Fast native-shell startup | 1–3 seconds | Electron has heavier initialization |
 | Backend Language | Rust | Node.js/V8 | Rust is more performant for financial calculations |
 | System WebView | Yes | No (bundled Chromium) | Tauri uses the OS's native WebView |
 
@@ -45,16 +45,16 @@ Wails is a similar Tauri alternative using Go for the backend. Both frameworks u
 
 Use **Tauri v2** with a **Svelte 5** frontend and **Rust** backend.
 
-- **Tauri v2**: Desktop shell, IPC bridge, file system access, system dialogs, auto-update
+- **Tauri v2**: Desktop shell, IPC bridge, file system access, and system dialogs; updater support can be added later through Tauri's plugin and configuration path
 - **Svelte 5**: Frontend UI with Runes for reactive state — the smallest bundle of any major framework
 - **Rust**: Backend business logic, database access, PDF rendering, scheduling
 
 ## Consequences
 
 ### Positive
-- Binary size of ~2.5 MB vs Electron's 150+ MB (50x smaller)
-- RAM consumption of 30–40 MB vs Electron's 150–300+ MB (5–8x less)
-- Instant startup (<500 ms) vs Electron's 1–3 seconds
+- Smaller distributable footprint than Electron because Tauri does not bundle Chromium
+- Lower idle memory profile than Electron because Tauri uses the system WebView
+- Fast native-shell startup vs Electron's heavier Chromium initialization
 - Native Rust backend enables fast financial calculations without JavaScript overhead
 - Consistent with 900PDF and 900CRM, enabling shared contributor knowledge
 - Strong security model: Tauri v2's capability-based permissions system
@@ -68,4 +68,4 @@ Use **Tauri v2** with a **Svelte 5** frontend and **Rust** backend.
 ### Notes for Contributors
 - The Tauri v2 documentation is at [v2.tauri.app](https://v2.tauri.app)
 - Rust learning resources: [The Rust Book](https://doc.rust-lang.org/book/), [Rust by Example](https://doc.rust-lang.org/rust-by-example/)
-- All Tauri commands are defined in `src-tauri/src/commands/` and registered in `src-tauri/src/main.rs`
+- All Tauri commands are defined in `src-tauri/src/commands/` and registered in `src-tauri/src/lib.rs`
