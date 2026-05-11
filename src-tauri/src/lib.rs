@@ -25,6 +25,7 @@ pub fn run() {
                 .expect("failed to get app data dir");
             std::fs::create_dir_all(&app_data_dir).ok();
             let conn = db::init_database(&app_data_dir).expect("failed to init database");
+            seed_default_exchange_rates(&conn);
             process_due_recurring(&conn, "startup");
             app.manage(Mutex::new(conn));
             start_recurring_due_worker(app.handle().clone());
@@ -137,5 +138,11 @@ fn process_due_recurring(conn: &Connection, context: &str) {
         Err(err) => {
             eprintln!("[recurring_scheduler] {context} run failed: {err}");
         }
+    }
+}
+
+fn seed_default_exchange_rates(conn: &Connection) {
+    if let Err(err) = services::exchange_rate_sync::seed_default_rates(conn) {
+        eprintln!("[exchange_rates] failed to seed default rates: {err}");
     }
 }

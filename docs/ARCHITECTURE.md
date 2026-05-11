@@ -178,6 +178,17 @@ export function parseAmount(input: string, currencyCode: string): number {
 
 **Critical rule**: The parsed integer is what gets sent to Rust. The formatted string is what gets displayed. Never send a float to Rust.
 
+### Exchange-rate snapshots are stored on invoices
+
+The app seeds default offline exchange rates during Tauri setup through `services::exchange_rate_sync::seed_default_rates`.
+
+Invoices store an audit snapshot in two fields:
+
+- `exchange_rate_to_usd`
+- `exchange_rate_date`
+
+The snapshot is filled by `services::exchange_rate_snapshot::snapshot_to_usd` during invoice creation, draft currency/date updates, finalization backfill, duplication, and recurring generation. This keeps historical invoices tied to the cached rate that was available when the invoice was issued, even if later exchange-rate rows are imported.
+
 ### Tax rates are stored as i32 basis points
 
 A basis point = 1/100 of a percent. 100 bps = 1.00%.

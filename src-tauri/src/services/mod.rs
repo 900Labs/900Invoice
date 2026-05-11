@@ -1,3 +1,4 @@
+pub mod exchange_rate_snapshot;
 pub mod exchange_rate_sync;
 pub mod invoice_numbering;
 pub mod pdf_engine;

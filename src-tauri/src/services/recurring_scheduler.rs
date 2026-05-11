@@ -9,6 +9,8 @@ use chrono::{Datelike, Duration, NaiveDate};
 use rusqlite::Connection;
 use uuid::Uuid;
 
+use crate::services::exchange_rate_snapshot;
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -68,19 +70,26 @@ pub fn generate_from_template(conn: &Connection, recurring_id: &str) -> Result<S
     let due_date = add_days(&today, payment_terms_days);
     let new_invoice_id = Uuid::new_v4().to_string();
     let now = now_iso();
+    let snapshot = exchange_rate_snapshot::snapshot_to_usd(conn, &template.currency_code, &today)?;
+    let exchange_rate_to_usd = snapshot.rate_to_usd.or(template.exchange_rate_to_usd);
+    let exchange_rate_date = snapshot
+        .valid_date
+        .or_else(|| template.exchange_rate_date.clone());
 
     // Insert the new invoice
     conn.execute(
         "INSERT INTO invoices (
             id, invoice_number, client_id, status, currency_code,
             subtotal_minor, discount_minor, tax_amount_minor, total_minor,
-            amount_paid_minor, issue_date, due_date, uses_inclusive_taxes,
-            notes, terms, footer, created_at, updated_at
+            amount_paid_minor, exchange_rate_to_usd, exchange_rate_date,
+            issue_date, due_date, uses_inclusive_taxes, notes, terms, footer,
+            created_at, updated_at
         ) VALUES (
             ?1, ?2, ?3, 'draft', ?4,
             ?5, ?6, ?7, ?8,
-            0, ?9, ?10, ?11,
-            ?12, ?13, ?14, ?15, ?16
+            0, ?9, ?10,
+            ?11, ?12, ?13, ?14, ?15, ?16,
+            ?17, ?18
         )",
         rusqlite::params![
             new_invoice_id,
@@ -91,6 +100,8 @@ pub fn generate_from_template(conn: &Connection, recurring_id: &str) -> Result<S
             template.discount_minor,
             template.tax_amount_minor,
             template.total_minor,
+            exchange_rate_to_usd,
+            exchange_rate_date,
             today,
             due_date,
             template.uses_inclusive_taxes,
@@ -263,6 +274,8 @@ struct InvoiceTemplate {
     discount_minor: i64,
     tax_amount_minor: i64,
     total_minor: i64,
+    exchange_rate_to_usd: Option<f64>,
+    exchange_rate_date: Option<String>,
     uses_inclusive_taxes: i32,
     notes: String,
     terms: String,
@@ -313,7 +326,8 @@ fn load_recurring(conn: &Connection, recurring_id: &str) -> Result<RecurringReco
 fn load_invoice(conn: &Connection, invoice_id: &str) -> Result<InvoiceTemplate, String> {
     conn.query_row(
         "SELECT id, client_id, currency_code, subtotal_minor, discount_minor, \
-         tax_amount_minor, total_minor, uses_inclusive_taxes, notes, terms, footer \
+         tax_amount_minor, total_minor, exchange_rate_to_usd, exchange_rate_date, \
+         uses_inclusive_taxes, notes, terms, footer \
          FROM invoices WHERE id = ?1",
         rusqlite::params![invoice_id],
         |row| {
@@ -325,10 +339,12 @@ fn load_invoice(conn: &Connection, invoice_id: &str) -> Result<InvoiceTemplate, 
                 discount_minor: row.get(4)?,
                 tax_amount_minor: row.get(5)?,
                 total_minor: row.get(6)?,
-                uses_inclusive_taxes: row.get(7)?,
-                notes: row.get(8)?,
-                terms: row.get(9)?,
-                footer: row.get(10)?,
+                exchange_rate_to_usd: row.get(7)?,
+                exchange_rate_date: row.get(8)?,
+                uses_inclusive_taxes: row.get(9)?,
+                notes: row.get(10)?,
+                terms: row.get(11)?,
+                footer: row.get(12)?,
             })
         },
     )
@@ -612,14 +628,32 @@ mod tests {
         let generated_id =
             generate_from_template(&conn, "recurring-1").expect("generated invoice id");
 
-        let (subtotal, tax, total): (i64, i64, i64) = conn
+        let (subtotal, tax, total, rate_to_usd, rate_date): (
+            i64,
+            i64,
+            i64,
+            Option<f64>,
+            Option<String>,
+        ) = conn
             .query_row(
-                "SELECT subtotal_minor, tax_amount_minor, total_minor FROM invoices WHERE id=?1",
+                "SELECT subtotal_minor, tax_amount_minor, total_minor,
+                        exchange_rate_to_usd, exchange_rate_date
+                 FROM invoices WHERE id=?1",
                 rusqlite::params![generated_id],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
             )
             .expect("generated invoice");
         assert_eq!((subtotal, tax, total), (10000, 1600, 11600));
+        assert_eq!(rate_to_usd, Some(1.0));
+        assert!(rate_date.is_some());
 
         let line_count: i64 = conn
             .query_row(

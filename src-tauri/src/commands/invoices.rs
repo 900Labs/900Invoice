@@ -2,6 +2,7 @@ use crate::db;
 use crate::models::invoice::{CreateInvoice, UpdateInvoice};
 use crate::models::line_item::CreateLineItem;
 use crate::models::tax::CreateInvoiceTax;
+use crate::services::exchange_rate_snapshot;
 use crate::services::invoice_numbering;
 use crate::services::tax_calculator;
 use rusqlite::Connection;
@@ -30,9 +31,10 @@ pub fn get_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json::Valu
 #[tauri::command]
 pub fn create_invoice(
     db: State<'_, DbConn>,
-    invoice: CreateInvoice,
+    mut invoice: CreateInvoice,
 ) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
+    apply_create_exchange_rate_snapshot(&conn, &mut invoice)?;
     let created = db::queries::invoices::insert(&conn, &invoice).map_err(|e| e.to_string())?;
     serde_json::to_value(created).map_err(|e| e.to_string())
 }
@@ -41,10 +43,11 @@ pub fn create_invoice(
 pub fn update_invoice(
     db: State<'_, DbConn>,
     id: String,
-    update: UpdateInvoice,
+    mut update: UpdateInvoice,
 ) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
     ensure_invoice_is_draft(&conn, &id)?;
+    apply_update_exchange_rate_snapshot(&conn, &id, &mut update)?;
     let updated = db::queries::invoices::update(&conn, &id, &update).map_err(|e| e.to_string())?;
     serde_json::to_value(updated).map_err(|e| e.to_string())
 }
@@ -81,6 +84,7 @@ pub fn finalize_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json:
 
     // Recalculate totals from line items
     recalculate_invoice_totals(&conn, &id)?;
+    ensure_invoice_exchange_rate_snapshot(&conn, &id)?;
 
     db::queries::invoices::update_status(&conn, &id, "finalized", Some("finalized_at"))
         .map_err(|e| e.to_string())?;
@@ -153,7 +157,7 @@ pub fn duplicate_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json
 
     // Create a new draft invoice from the original
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let new_invoice = CreateInvoice {
+    let mut new_invoice = CreateInvoice {
         client_id: original.client_id.clone(),
         currency_code: Some(original.currency_code.clone()),
         issue_date: Some(today),
@@ -163,9 +167,10 @@ pub fn duplicate_invoice(db: State<'_, DbConn>, id: String) -> Result<serde_json
         terms: Some(original.terms.clone()),
         footer: Some(original.footer.clone()),
         discount_minor: Some(original.discount_minor),
-        exchange_rate_to_usd: original.exchange_rate_to_usd,
-        exchange_rate_date: original.exchange_rate_date.clone(),
+        exchange_rate_to_usd: None,
+        exchange_rate_date: None,
     };
+    apply_create_exchange_rate_snapshot(&conn, &mut new_invoice)?;
     let created = db::queries::invoices::insert(&conn, &new_invoice).map_err(|e| e.to_string())?;
 
     // Copy line items
@@ -194,6 +199,103 @@ pub fn search_invoices(db: State<'_, DbConn>, query: String) -> Result<serde_jso
     let conn = db.lock().map_err(|e| e.to_string())?;
     let results = db::queries::invoices::search(&conn, &query).map_err(|e| e.to_string())?;
     serde_json::to_value(results).map_err(|e| e.to_string())
+}
+
+fn apply_create_exchange_rate_snapshot(
+    conn: &Connection,
+    invoice: &mut CreateInvoice,
+) -> Result<(), String> {
+    if invoice.exchange_rate_to_usd.is_some() && invoice.exchange_rate_date.is_some() {
+        return Ok(());
+    }
+
+    let currency = invoice.currency_code.as_deref().unwrap_or("USD");
+    let issue_date = invoice
+        .issue_date
+        .clone()
+        .unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
+    let snapshot = exchange_rate_snapshot::snapshot_to_usd(conn, currency, &issue_date)?;
+
+    if invoice.exchange_rate_to_usd.is_none() {
+        invoice.exchange_rate_to_usd = snapshot.rate_to_usd;
+    }
+    if invoice.exchange_rate_date.is_none() {
+        invoice.exchange_rate_date = snapshot.valid_date;
+    }
+    Ok(())
+}
+
+fn apply_update_exchange_rate_snapshot(
+    conn: &Connection,
+    id: &str,
+    update: &mut UpdateInvoice,
+) -> Result<(), String> {
+    if update.exchange_rate_to_usd.is_some() && update.exchange_rate_date.is_some() {
+        return Ok(());
+    }
+    if update.currency_code.is_none() && update.issue_date.is_none() {
+        return Ok(());
+    }
+
+    let existing = db::queries::invoices::get_by_id(conn, id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Invoice not found: {}", id))?;
+    let currency = update
+        .currency_code
+        .as_deref()
+        .unwrap_or(existing.currency_code.as_str());
+    let issue_date = update
+        .issue_date
+        .as_deref()
+        .unwrap_or(existing.issue_date.as_str());
+    let snapshot = exchange_rate_snapshot::snapshot_to_usd(conn, currency, issue_date)?;
+
+    if update.exchange_rate_to_usd.is_none() {
+        update.exchange_rate_to_usd = snapshot.rate_to_usd;
+    }
+    if update.exchange_rate_date.is_none() {
+        update.exchange_rate_date = snapshot.valid_date;
+    }
+    Ok(())
+}
+
+fn ensure_invoice_exchange_rate_snapshot(conn: &Connection, id: &str) -> Result<(), String> {
+    let invoice = db::queries::invoices::get_by_id(conn, id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| format!("Invoice not found: {}", id))?;
+
+    if invoice.exchange_rate_to_usd.is_some() && invoice.exchange_rate_date.is_some() {
+        return Ok(());
+    }
+
+    let snapshot =
+        exchange_rate_snapshot::snapshot_to_usd(conn, &invoice.currency_code, &invoice.issue_date)?;
+    let update = UpdateInvoice {
+        client_id: None,
+        currency_code: None,
+        issue_date: None,
+        due_date: None,
+        uses_inclusive_taxes: None,
+        notes: None,
+        terms: None,
+        footer: None,
+        discount_minor: None,
+        exchange_rate_to_usd: if invoice.exchange_rate_to_usd.is_none() {
+            snapshot.rate_to_usd
+        } else {
+            None
+        },
+        exchange_rate_date: if invoice.exchange_rate_date.is_none() {
+            snapshot.valid_date
+        } else {
+            None
+        },
+    };
+
+    if update.exchange_rate_to_usd.is_some() || update.exchange_rate_date.is_some() {
+        db::queries::invoices::update(conn, id, &update).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 /// Internal helper: recompute and persist invoice totals from current line items.
