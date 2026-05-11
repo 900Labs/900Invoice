@@ -55,6 +55,8 @@ export async function initI18n() {
   fallback = enData;
   translations = enData;
   currentLocale = 'en';
+  document.documentElement.setAttribute('dir', 'ltr');
+  document.documentElement.setAttribute('lang', 'en');
 }
 
 function getNestedValue(obj: Record<string, unknown>, path: string): string | null {

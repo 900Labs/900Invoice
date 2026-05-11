@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getCurrentView, canGoBack, navigateBack } from '../../stores/navigationStore';
   import { t, setLocale, getCurrentLocale, SUPPORTED_LOCALES } from '../../stores/i18nStore';
+  import { updateSetting } from '../../stores/settingsStore';
 
   let currentView = $derived(getCurrentView());
   let locale = $derived(getCurrentLocale());
@@ -23,6 +24,7 @@
 
   async function handleLocaleChange(code: string) {
     await setLocale(code);
+    await updateSetting('locale', code);
     showLangMenu = false;
   }
 
