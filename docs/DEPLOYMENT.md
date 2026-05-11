@@ -144,7 +144,7 @@ For production releases, code signing is strongly recommended (see below).
 
 ### Windows
 
-**Data location on Windows**: `%APPDATA%\com.900labs.invoice\900invoice.db` (e.g., `C:\Users\Alice\AppData\Roaming\com.900labs.invoice\`)
+**Data location on Windows**: `%APPDATA%\com.900labs.invoice\900invoice.db`
 
 **MSI vs NSIS installer**: The MSI installer is preferred for enterprise deployment (Group Policy, SCCM). The NSIS installer (`-setup.exe`) is preferred for individual user installs.
 
