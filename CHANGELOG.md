@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preserved selected tax-rate identity on invoice line items so withholding rates with duplicate percentages recalculate correctly.
 - Recalculated duplicated invoice totals and tax rows after copying line items so duplicate drafts are immediately consistent.
 - Kept dashboard and report summary totals grouped by currency instead of summing mixed-currency minor units.
+- Displayed withholding tax lines as deductions in frontend invoice summaries and matched editor draft totals to backend withholding calculations.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.
 - Enabled recurring due processing on app startup and an hourly in-process worker for missed-job recovery while the app is open.
