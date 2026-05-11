@@ -71,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corrected source-build setup docs for the cloned `900Invoice` directory name and required Tauri CLI.
 - Corrected README project-tree casing and tax-rate contribution path references.
 - Aligned deployment guidance with the current source-archive release workflow and not-yet-enabled updater/platform-binary pipeline.
+- Fixed client CSV import to preserve exported tax IDs, currencies, payment terms, and notes while retaining legacy header compatibility.
 - Preserved product catalog default tax-rate identity so quick-invoiced line items keep the selected tax type when multiple active rates share the same percentage.
 - Aligned manual recurring invoice generation with the scheduler service so generated invoices preserve template totals, line items, and persisted tax rows.
 - Replaced the placeholder invoice PDF command with native PDF byte generation and a desktop save flow from invoice preview.

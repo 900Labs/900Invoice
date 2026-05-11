@@ -206,7 +206,7 @@ Default offline exchange-rate rows are seeded during app startup. Invoice creati
 
 | Command | Invoke Args | Returns | Notes |
 |---|---|---|---|
-| `import_clients_csv` | `{ csvContent: string }` | JSON object | Returns `{ imported, errors }`. |
+| `import_clients_csv` | `{ csvContent: string }` | JSON object | Returns `{ imported, errors }`; expects `name,email,phone,address,city,country,country_code,tax_id,currency_code,payment_terms_days,notes`; legacy client CSV files without `tax_id` and `notes` are still accepted. |
 | `export_clients_csv` | none | `string` | CSV export; sanitizes formula-like cells. |
 | `import_products_csv` | `{ csvContent: string }` | JSON object | Returns `{ imported, errors }`; expects `name,description,default_price,default_currency,default_tax_rate_bps,default_tax_rate_id,unit,is_active`; legacy product CSV files without `default_tax_rate_id` are still accepted. |
 | `export_products_csv` | none | `string` | CSV export for all products, including inactive rows; sanitizes formula-like cells. |

@@ -450,18 +450,9 @@ fn export_products_csv_content(conn: &Connection) -> Result<String, String> {
     Ok(out)
 }
 
-/// Import clients from a CSV string.
-/// Expected header: name,email,phone,address,city,country,country_code,currency_code,payment_terms_days
-#[tauri::command]
-pub fn import_clients_csv(
-    db: State<'_, DbConn>,
-    csv_content: String,
-) -> Result<serde_json::Value, String> {
-    let conn = db.lock().map_err(|e| e.to_string())?;
-
+fn import_clients_csv_content(conn: &Connection, csv_content: &str) -> Result<Value, String> {
     let mut lines = csv_content.lines();
-    // Skip header
-    let _header = lines.next();
+    let header = lines.next().map(parse_csv_line).unwrap_or_default();
 
     let mut imported = 0usize;
     let mut errors: Vec<String> = Vec::new();
@@ -471,30 +462,67 @@ pub fn import_clients_csv(
             continue;
         }
         let fields = parse_csv_line(line);
+        let row = i + 2;
 
-        let name = fields.first().cloned().unwrap_or_default();
+        let name = csv_field(&fields, &header, "name", Some(0))
+            .cloned()
+            .unwrap_or_default();
         if name.is_empty() {
-            errors.push(format!("Row {}: missing name", i + 2));
+            errors.push(format!("Row {}: missing name", row));
             continue;
         }
 
-        let client = CreateClient {
-            name,
-            email: fields.get(1).cloned().filter(|s| !s.is_empty()),
-            phone: fields.get(2).cloned().filter(|s| !s.is_empty()),
-            address: fields.get(3).cloned().filter(|s| !s.is_empty()),
-            city: fields.get(4).cloned().filter(|s| !s.is_empty()),
-            country: fields.get(5).cloned().filter(|s| !s.is_empty()),
-            country_code: fields.get(6).cloned().filter(|s| !s.is_empty()),
-            tax_id: None,
-            currency_code: fields.get(7).cloned().filter(|s| !s.is_empty()),
-            payment_terms_days: fields.get(8).and_then(|s| s.parse::<i32>().ok()),
-            notes: None,
+        let payment_terms_days = match csv_field(&fields, &header, "payment_terms_days", Some(8))
+            .filter(|s| !s.trim().is_empty())
+        {
+            Some(value) => match value.trim().parse::<i32>() {
+                Ok(days) if days >= 0 => Some(days),
+                _ => {
+                    errors.push(format!(
+                        "Row {}: invalid payment_terms_days '{}'",
+                        row, value
+                    ));
+                    continue;
+                }
+            },
+            None => None,
         };
 
-        match db::queries::clients::insert(&conn, &client) {
+        let client = CreateClient {
+            name,
+            email: csv_field(&fields, &header, "email", Some(1))
+                .cloned()
+                .filter(|s| !s.is_empty()),
+            phone: csv_field(&fields, &header, "phone", Some(2))
+                .cloned()
+                .filter(|s| !s.is_empty()),
+            address: csv_field(&fields, &header, "address", Some(3))
+                .cloned()
+                .filter(|s| !s.is_empty()),
+            city: csv_field(&fields, &header, "city", Some(4))
+                .cloned()
+                .filter(|s| !s.is_empty()),
+            country: csv_field(&fields, &header, "country", Some(5))
+                .cloned()
+                .filter(|s| !s.is_empty()),
+            country_code: csv_field(&fields, &header, "country_code", Some(6))
+                .cloned()
+                .filter(|s| !s.is_empty()),
+            tax_id: csv_field(&fields, &header, "tax_id", None)
+                .cloned()
+                .filter(|s| !s.is_empty()),
+            currency_code: csv_field(&fields, &header, "currency_code", Some(7))
+                .cloned()
+                .filter(|s| !s.is_empty()),
+            payment_terms_days,
+            notes: csv_field(&fields, &header, "notes", None)
+                .cloned()
+                .filter(|s| !s.is_empty()),
+        };
+
+        match db::queries::clients::insert(conn, &client) {
             Ok(_) => imported += 1,
-            Err(e) => errors.push(format!("Row {}: {}", i + 2, e)),
+            Err(e) => errors.push(format!("Row {}: {}", row, e)),
         }
     }
 
@@ -504,11 +532,19 @@ pub fn import_clients_csv(
     }))
 }
 
-/// Export all clients as a CSV string.
+/// Import clients from a CSV string.
+/// Expected header: name,email,phone,address,city,country,country_code,tax_id,currency_code,payment_terms_days,notes
 #[tauri::command]
-pub fn export_clients_csv(db: State<'_, DbConn>) -> Result<String, String> {
+pub fn import_clients_csv(
+    db: State<'_, DbConn>,
+    csv_content: String,
+) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let clients = db::queries::clients::list_all(&conn).map_err(|e| e.to_string())?;
+    import_clients_csv_content(&conn, &csv_content)
+}
+
+fn export_clients_csv_content(conn: &Connection) -> Result<String, String> {
+    let clients = db::queries::clients::list_all(conn).map_err(|e| e.to_string())?;
 
     let mut out =
         String::from("name,email,phone,address,city,country,country_code,tax_id,currency_code,payment_terms_days,notes\n");
@@ -530,6 +566,13 @@ pub fn export_clients_csv(db: State<'_, DbConn>) -> Result<String, String> {
         out.push('\n');
     }
     Ok(out)
+}
+
+/// Export all clients as a CSV string.
+#[tauri::command]
+pub fn export_clients_csv(db: State<'_, DbConn>) -> Result<String, String> {
+    let conn = db.lock().map_err(|e| e.to_string())?;
+    export_clients_csv_content(&conn)
 }
 
 /// Import products from a CSV string.
@@ -1019,10 +1062,11 @@ pub fn restore_database(db: State<'_, DbConn>, backup: Value) -> Result<Value, S
 #[cfg(test)]
 mod tests {
     use super::{
-        csv_escape, export_products_csv_content, import_products_csv_content, parse_csv_line,
-        restore_backup,
+        csv_escape, export_clients_csv_content, export_products_csv_content,
+        import_clients_csv_content, import_products_csv_content, parse_csv_line, restore_backup,
     };
     use crate::db::migrations;
+    use crate::models::client::CreateClient;
     use crate::models::product::CreateProduct;
     use rusqlite::Connection;
     use serde_json::json;
@@ -1065,6 +1109,95 @@ mod tests {
     fn parse_csv_line_handles_basic_quoted_commas() {
         let fields = parse_csv_line("name,\"addr, line\",city");
         assert_eq!(fields, vec!["name", "addr, line", "city"]);
+    }
+
+    #[test]
+    fn import_clients_csv_content_imports_current_header_fields() {
+        let conn = test_conn();
+        let csv = concat!(
+            "name,email,phone,address,city,country,country_code,tax_id,currency_code,payment_terms_days,notes\n",
+            "Acme,billing@example.com,+254700000000,\"1 Main, Floor 2\",Nairobi,Kenya,KE,PIN-123,KES,14,\"Preferred, pays fast\"\n",
+            ",missing@example.com,,,,,,,USD,30,\n",
+            "Broken terms,,,,,,,,USD,abc,\n"
+        );
+
+        let result = import_clients_csv_content(&conn, csv).expect("import clients");
+
+        assert_eq!(result["imported"], 1);
+        assert_eq!(result["errors"].as_array().expect("errors").len(), 2);
+
+        let clients = crate::db::queries::clients::list_all(&conn).expect("clients");
+        let acme = clients.iter().find(|c| c.name == "Acme").expect("acme");
+        assert_eq!(acme.email, "billing@example.com");
+        assert_eq!(acme.address, "1 Main, Floor 2");
+        assert_eq!(acme.country_code, "KE");
+        assert_eq!(acme.tax_id, "PIN-123");
+        assert_eq!(acme.currency_code, "KES");
+        assert_eq!(acme.payment_terms_days, 14);
+        assert_eq!(acme.notes, "Preferred, pays fast");
+    }
+
+    #[test]
+    fn import_clients_csv_content_accepts_legacy_header_without_tax_id_notes() {
+        let conn = test_conn();
+        let csv = concat!(
+            "name,email,phone,address,city,country,country_code,currency_code,payment_terms_days\n",
+            "Legacy,billing@example.com,+254700000000,Street,Nairobi,Kenya,KE,KES,45\n"
+        );
+
+        let result = import_clients_csv_content(&conn, csv).expect("import legacy clients");
+
+        assert_eq!(result["imported"], 1);
+        assert!(result["errors"].as_array().expect("errors").is_empty());
+
+        let clients = crate::db::queries::clients::list_all(&conn).expect("clients");
+        let legacy = clients.iter().find(|c| c.name == "Legacy").expect("legacy");
+        assert_eq!(legacy.tax_id, "");
+        assert_eq!(legacy.currency_code, "KES");
+        assert_eq!(legacy.payment_terms_days, 45);
+        assert_eq!(legacy.notes, "");
+    }
+
+    #[test]
+    fn exported_clients_csv_round_trips_tax_id_currency_and_notes() {
+        let source = test_conn();
+        crate::db::queries::clients::insert(
+            &source,
+            &CreateClient {
+                name: "Round Trip".to_string(),
+                email: Some("billing@example.com".to_string()),
+                phone: Some("+234800000000".to_string()),
+                address: Some("Plot 7".to_string()),
+                city: Some("Lagos".to_string()),
+                country: Some("Nigeria".to_string()),
+                country_code: Some("NG".to_string()),
+                tax_id: Some("TIN-987".to_string()),
+                currency_code: Some("NGN".to_string()),
+                payment_terms_days: Some(21),
+                notes: Some("Handle with care, monthly".to_string()),
+            },
+        )
+        .expect("insert source client");
+
+        let csv = export_clients_csv_content(&source).expect("export clients");
+        assert!(csv.starts_with(
+            "name,email,phone,address,city,country,country_code,tax_id,currency_code,payment_terms_days,notes\n"
+        ));
+
+        let target = test_conn();
+        let result = import_clients_csv_content(&target, &csv).expect("import exported clients");
+        assert_eq!(result["imported"], 1);
+        assert!(result["errors"].as_array().expect("errors").is_empty());
+
+        let clients = crate::db::queries::clients::list_all(&target).expect("clients");
+        let round_trip = clients
+            .iter()
+            .find(|c| c.name == "Round Trip")
+            .expect("round-trip client");
+        assert_eq!(round_trip.tax_id, "TIN-987");
+        assert_eq!(round_trip.currency_code, "NGN");
+        assert_eq!(round_trip.payment_terms_days, 21);
+        assert_eq!(round_trip.notes, "Handle with care, monthly");
     }
 
     #[test]
