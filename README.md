@@ -146,7 +146,7 @@ The production binary will be in `src-tauri/target/release/bundle/`.
 ## Project Structure
 
 ```
-900invoice/
+900Invoice/
 ├── src/                    # Svelte 5 frontend
 │   ├── components/         # UI components by feature
 │   │   ├── invoices/       # Invoice form, list, preview
@@ -205,7 +205,7 @@ We welcome contributions from developers worldwide — especially those in the r
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding standards, sprint rules, and the PR process.
 
 **Quick contribution ideas:**
-- Add your country's tax rates to `src-tauri/src/services/tax.rs`
+- Add your country's default tax rates in `src-tauri/src/db/migrations.rs`
 - Add a translation for your language to `src/i18n/`
 - Report bugs in your operating environment
 - Improve documentation clarity
