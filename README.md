@@ -184,18 +184,27 @@ Your data never leaves your machine unless you explicitly export it.
 
 ## Documentation
 
-- [Architecture Overview](docs/ARCHITECTURE.md) — system design, data flow, money conventions
+**Build and use**
+
+- [Deployment Guide](docs/DEPLOYMENT.md) — source builds, local bundles, platform notes, and data locations
+- [Public Release Checklist](docs/PUBLIC_RELEASE.md) — repository visibility, privacy, and documentation readiness checks
+- [Release Runbook](docs/RELEASE.md) — tagged release flow, artifacts, checksums, and release checklist
+- [Runtime Smoke Runbook](docs/RUNTIME_SMOKE.md) — release-readiness smoke verification, including legacy-hardware mode
+
+**Product and architecture**
+
 - [API Documentation](docs/API.md) — complete Tauri command reference (63 commands)
-- [PDF Rendering](docs/TEMPLATES.md) — invoice PDF/preview rendering notes
-- [Internationalization Guide](docs/I18N.md) — add languages, RTL support
-- [Deployment Guide](docs/DEPLOYMENT.md) — build and distribute for all platforms
-- [Release Runbook](docs/RELEASE.md) — tagged release flow, artifacts, and checklist
-- [Maintainer Checklist](docs/MAINTAINER_CHECKLIST.md) — governance profile, policy verification, and sprint/release handoff checklist
+- [Architecture Overview](docs/ARCHITECTURE.md) — system design, data flow, money conventions, and offline model
+- [Internationalization Guide](docs/I18N.md) — add languages, locale formatting, and RTL support
+- [PDF Rendering](docs/TEMPLATES.md) — invoice PDF and preview rendering notes
+
+**Maintainers and contributors**
+
 - [Branch Protection Policy](docs/BRANCH_PROTECTION.md) — required merge and branch safeguards for `main`
 - [Governance Audit](docs/GOVERNANCE_AUDIT.md) — scheduled drift detection for policy and docs parity
-- [Sprint Process](docs/SPRINT_PROCESS.md) — required sprint workflow and squash-merge policy
+- [Maintainer Checklist](docs/MAINTAINER_CHECKLIST.md) — governance profile, policy verification, and sprint/release handoff checklist
 - [Quality Gate](docs/QUALITY_GATE.md) — required pre-merge validation baseline
-- [Runtime Smoke Runbook](docs/RUNTIME_SMOKE.md) — release-readiness smoke verification, including legacy-hardware mode
+- [Sprint Process](docs/SPRINT_PROCESS.md) — required sprint workflow and squash-merge policy
 - [Sprint Records](docs/sprints/) — delivered sprint scope, validation, and decision history
 
 ## Contributing

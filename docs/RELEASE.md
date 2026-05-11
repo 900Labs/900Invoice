@@ -46,7 +46,8 @@ Use `docs/MAINTAINER_CHECKLIST.md` for maintainer governance/profile verificatio
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings`
 5. Confirm changelog and sprint documentation are updated.
-6. Confirm the target version is reflected in release notes/changelog.
+6. For public repository visibility changes or public release prep, complete `docs/PUBLIC_RELEASE.md`.
+7. Confirm the target version is reflected in release notes/changelog.
 
 ---
 
