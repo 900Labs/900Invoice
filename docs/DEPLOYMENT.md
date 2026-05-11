@@ -9,6 +9,10 @@ This guide covers building 900Invoice from source and distributing it for all su
 ### All Platforms
 - **Rust 1.75+**: [rustup.rs](https://rustup.rs)
 - **Node.js 18+**: [nodejs.org](https://nodejs.org)
+- **Tauri CLI v2**: required for `cargo tauri` commands
+  ```bash
+  cargo install tauri-cli --version "^2"
+  ```
 
 ### Linux (Ubuntu/Debian)
 ```bash
@@ -63,7 +67,7 @@ Xcode Command Line Tools provides the compiler, linker, and system libraries nee
 
 ```bash
 git clone https://github.com/900Labs/900Invoice.git
-cd 900invoice
+cd 900Invoice
 npm install
 cargo tauri dev
 ```
