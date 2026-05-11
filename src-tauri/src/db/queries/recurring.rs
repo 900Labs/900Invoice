@@ -101,26 +101,3 @@ pub fn delete(conn: &Connection, id: &str) -> Result<()> {
     conn.execute("DELETE FROM recurring_invoices WHERE id=?1", params![id])?;
     Ok(())
 }
-
-/// Returns recurring invoices that are active and due today or earlier
-pub fn get_due(conn: &Connection, today: &str) -> Result<Vec<RecurringInvoice>> {
-    let sql = format!(
-        "SELECT {} FROM recurring_invoices
-         WHERE status='active' AND next_generation_date <= ?1
-         ORDER BY next_generation_date ASC",
-        SELECT_COLS
-    );
-    let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map(params![today], row_to_recurring)?;
-    rows.collect()
-}
-
-pub fn mark_generated(conn: &Connection, id: &str, next_date: &str) -> Result<()> {
-    conn.execute(
-        "UPDATE recurring_invoices
-         SET last_generated=datetime('now'), next_generation_date=?1, updated_at=datetime('now')
-         WHERE id=?2",
-        params![next_date, id],
-    )?;
-    Ok(())
-}

@@ -130,6 +130,28 @@ pub fn generate_from_template(conn: &Connection, recurring_id: &str) -> Result<S
         .map_err(|e| format!("Failed to duplicate line item: {e}"))?;
     }
 
+    let invoice_taxes = load_invoice_taxes(conn, &template.id)?;
+    for tax in &invoice_taxes {
+        let new_tax_id = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO invoice_taxes (
+                id, invoice_id, tax_rate_id, tax_name, tax_rate_bps,
+                tax_amount_minor, is_withholding, created_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![
+                new_tax_id,
+                new_invoice_id,
+                tax.tax_rate_id,
+                tax.tax_name,
+                tax.tax_rate_bps,
+                tax.tax_amount_minor,
+                tax.is_withholding,
+                now,
+            ],
+        )
+        .map_err(|e| format!("Failed to duplicate invoice tax: {e}"))?;
+    }
+
     // Calculate the next generation date based on current next_generation_date
     // (not today, to avoid drift — we advance from the scheduled date)
     let next_date = calculate_next_date(&rec.next_generation_date, &rec.frequency);
@@ -185,9 +207,10 @@ pub fn calculate_next_date(current: &str, frequency: &str) -> String {
 
     let next = match frequency.to_lowercase().as_str() {
         "weekly" => date + Duration::days(7),
+        "biweekly" => date + Duration::days(14),
         "monthly" => advance_months(date, 1),
         "quarterly" => advance_months(date, 3),
-        "annual" | "yearly" => advance_months(date, 12),
+        "annual" | "annually" | "yearly" => advance_months(date, 12),
         _ => date + Duration::days(30),
     };
 
@@ -255,6 +278,14 @@ struct LineItemTemplate {
     discount_bps: i32,
     line_total_minor: i64,
     sort_order: i32,
+}
+
+struct InvoiceTaxTemplate {
+    tax_rate_id: Option<String>,
+    tax_name: String,
+    tax_rate_bps: i32,
+    tax_amount_minor: i64,
+    is_withholding: i32,
 }
 
 // ---------------------------------------------------------------------------
@@ -347,6 +378,36 @@ fn load_line_items(conn: &Connection, invoice_id: &str) -> Result<Vec<LineItemTe
     Ok(items)
 }
 
+fn load_invoice_taxes(
+    conn: &Connection,
+    invoice_id: &str,
+) -> Result<Vec<InvoiceTaxTemplate>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT tax_rate_id, tax_name, tax_rate_bps, tax_amount_minor, is_withholding
+             FROM invoice_taxes
+             WHERE invoice_id = ?1
+             ORDER BY created_at",
+        )
+        .map_err(|e| format!("Failed to prepare invoice taxes query: {e}"))?;
+
+    let taxes = stmt
+        .query_map(rusqlite::params![invoice_id], |row| {
+            Ok(InvoiceTaxTemplate {
+                tax_rate_id: row.get(0)?,
+                tax_name: row.get(1)?,
+                tax_rate_bps: row.get(2)?,
+                tax_amount_minor: row.get(3)?,
+                is_withholding: row.get(4)?,
+            })
+        })
+        .map_err(|e| format!("Failed to query invoice taxes: {e}"))?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(taxes)
+}
+
 /// Advance a NaiveDate by N months, clamping to end of month if needed.
 fn advance_months(date: NaiveDate, months: u32) -> NaiveDate {
     let mut year = date.year();
@@ -422,6 +483,7 @@ fn record_changelog(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::migrations;
 
     #[test]
     fn test_calculate_next_weekly() {
@@ -455,6 +517,12 @@ mod tests {
     }
 
     #[test]
+    fn test_calculate_next_annually() {
+        let next = calculate_next_date("2026-02-28", "annually");
+        assert_eq!(next, "2027-02-28");
+    }
+
+    #[test]
     fn test_calculate_next_annual_leap() {
         // Feb 29 on a leap year → next year Feb 28
         let next = calculate_next_date("2024-02-29", "annual");
@@ -462,9 +530,15 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_next_unknown_frequency() {
-        // Unknown → 30 days
+    fn test_calculate_next_biweekly() {
         let next = calculate_next_date("2026-03-01", "biweekly");
+        assert_eq!(next, "2026-03-15");
+    }
+
+    #[test]
+    fn test_calculate_next_unknown_frequency() {
+        // Unknown -> 30 days
+        let next = calculate_next_date("2026-03-01", "semiweekly");
         assert_eq!(next, "2026-03-31");
     }
 
@@ -487,5 +561,90 @@ mod tests {
         let date = NaiveDate::from_ymd_opt(2026, 11, 30).unwrap();
         let next = advance_months(date, 3);
         assert_eq!(next.to_string(), "2027-02-28");
+    }
+
+    #[test]
+    fn test_generate_from_template_copies_totals_lines_and_taxes() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        migrations::run_migrations(&conn).expect("migrations");
+
+        conn.execute(
+            "INSERT INTO clients
+             (id, name, currency_code, payment_terms_days)
+             VALUES ('client-1', 'Acme', 'USD', 10)",
+            [],
+        )
+        .expect("client");
+        conn.execute(
+            "INSERT INTO invoices
+             (id, invoice_number, client_id, status, currency_code, subtotal_minor,
+              discount_minor, tax_amount_minor, total_minor, amount_paid_minor,
+              issue_date, due_date, uses_inclusive_taxes, notes, terms, footer)
+             VALUES
+             ('template-1', 'INV-TEMPLATE', 'client-1', 'finalized', 'USD', 10000,
+              0, 1600, 11600, 0, '2026-05-01', '2026-05-11', 0, '', '', '')",
+            [],
+        )
+        .expect("template invoice");
+        conn.execute(
+            "INSERT INTO invoice_line_items
+             (id, invoice_id, description, quantity, unit_price_minor, tax_rate_bps,
+              discount_bps, line_total_minor, sort_order)
+             VALUES ('line-1', 'template-1', 'Consulting', 100, 10000, 1600, 0, 10000, 0)",
+            [],
+        )
+        .expect("line item");
+        conn.execute(
+            "INSERT INTO invoice_taxes
+             (id, invoice_id, tax_rate_id, tax_name, tax_rate_bps, tax_amount_minor, is_withholding)
+             VALUES ('tax-line-1', 'template-1', 'tax-ke-vat', 'VAT @ 16%', 1600, 1600, 0)",
+            [],
+        )
+        .expect("invoice tax");
+        conn.execute(
+            "INSERT INTO recurring_invoices
+             (id, client_id, template_invoice_id, frequency, next_generation_date, auto_send, status)
+             VALUES ('recurring-1', 'client-1', 'template-1', 'annually', '2026-05-11', 0, 'active')",
+            [],
+        )
+        .expect("recurring");
+
+        let generated_id =
+            generate_from_template(&conn, "recurring-1").expect("generated invoice id");
+
+        let (subtotal, tax, total): (i64, i64, i64) = conn
+            .query_row(
+                "SELECT subtotal_minor, tax_amount_minor, total_minor FROM invoices WHERE id=?1",
+                rusqlite::params![generated_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("generated invoice");
+        assert_eq!((subtotal, tax, total), (10000, 1600, 11600));
+
+        let line_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM invoice_line_items WHERE invoice_id=?1",
+                rusqlite::params![generated_id],
+                |row| row.get(0),
+            )
+            .expect("line count");
+        let tax_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM invoice_taxes WHERE invoice_id=?1",
+                rusqlite::params![generated_id],
+                |row| row.get(0),
+            )
+            .expect("tax count");
+        assert_eq!(line_count, 1);
+        assert_eq!(tax_count, 1);
+
+        let next_generation_date: String = conn
+            .query_row(
+                "SELECT next_generation_date FROM recurring_invoices WHERE id='recurring-1'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("next date");
+        assert_eq!(next_generation_date, "2027-05-11");
     }
 }

@@ -174,7 +174,7 @@ The list below is machine-validated against `src-tauri/src/lib.rs` by `./scripts
 | `create_recurring` | `{ recurring: CreateRecurring }` | `RecurringInvoice` (JSON) | |
 | `update_recurring` | `{ id: string, update: UpdateRecurring }` | `RecurringInvoice` (JSON) | |
 | `delete_recurring` | `{ id: string }` | `void` | |
-| `generate_due_recurring` | none | `Invoice[]` (JSON) | Generates invoices for schedules due today and advances schedules. |
+| `generate_due_recurring` | none | `InvoiceWithDetails[]` (JSON) | Generates invoices for schedules due today, copies template line items and tax rows, and advances schedules. |
 
 ### Products
 
