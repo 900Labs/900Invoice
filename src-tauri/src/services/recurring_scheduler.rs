@@ -41,7 +41,7 @@ pub fn get_due_recurring(conn: &Connection) -> Result<Vec<String>, String> {
 ///
 /// 1. Loads the recurring record and its template invoice with all line items.
 /// 2. Creates a new invoice as a draft copy with:
-///    - New UUID and new invoice number
+///    - New UUID and no invoice number until finalization
 ///    - issue_date = today, due_date = today + payment_terms_days
 ///    - status = 'draft'
 ///    - All line items duplicated
@@ -60,11 +60,6 @@ pub fn generate_from_template(conn: &Connection, recurring_id: &str) -> Result<S
 
     // Get payment terms from client
     let payment_terms_days = load_client_payment_terms(conn, &template.client_id)?;
-
-    // Generate invoice number
-    let new_invoice_number =
-        crate::services::invoice_numbering::generate_invoice_number(conn, "default")
-            .unwrap_or_else(|_| format!("INV-{}", Uuid::new_v4().to_string()[..8].to_uppercase()));
 
     let today = today_iso();
     let due_date = add_days(&today, payment_terms_days);
@@ -93,7 +88,7 @@ pub fn generate_from_template(conn: &Connection, recurring_id: &str) -> Result<S
         )",
         rusqlite::params![
             new_invoice_id,
-            new_invoice_number,
+            Option::<String>::None,
             template.client_id,
             template.currency_code,
             template.subtotal_minor,
@@ -628,10 +623,15 @@ mod tests {
         )
         .expect("recurring");
 
+        let sequence_preview_before =
+            crate::services::invoice_numbering::preview_next_number(&conn, "default")
+                .expect("preview before");
         let generated_id =
             generate_from_template(&conn, "recurring-1").expect("generated invoice id");
 
-        let (subtotal, tax, total, rate_to_usd, rate_date): (
+        let (invoice_number, status, subtotal, tax, total, rate_to_usd, rate_date): (
+            Option<String>,
+            String,
             i64,
             i64,
             i64,
@@ -639,7 +639,7 @@ mod tests {
             Option<String>,
         ) = conn
             .query_row(
-                "SELECT subtotal_minor, tax_amount_minor, total_minor,
+                "SELECT invoice_number, status, subtotal_minor, tax_amount_minor, total_minor,
                         exchange_rate_to_usd, exchange_rate_date
                  FROM invoices WHERE id=?1",
                 rusqlite::params![generated_id],
@@ -650,13 +650,21 @@ mod tests {
                         row.get(2)?,
                         row.get(3)?,
                         row.get(4)?,
+                        row.get(5)?,
+                        row.get(6)?,
                     ))
                 },
             )
             .expect("generated invoice");
+        assert_eq!(invoice_number, None);
+        assert_eq!(status, "draft");
         assert_eq!((subtotal, tax, total), (10000, 1600, 11600));
         assert_eq!(rate_to_usd, Some(1.0));
         assert!(rate_date.is_some());
+        let sequence_preview_after =
+            crate::services::invoice_numbering::preview_next_number(&conn, "default")
+                .expect("preview after");
+        assert_eq!(sequence_preview_after, sequence_preview_before);
 
         let line_count: i64 = conn
             .query_row(

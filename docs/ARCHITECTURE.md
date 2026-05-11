@@ -266,8 +266,8 @@ total:       1_200_000  (KES 12,000.00)
 - `DRAFT` → `FINALIZED`: assigns invoice number, locks line items and tax rates
 - `FINALIZED` → `SENT`: records a sent timestamp; optional but recommended
 - `FINALIZED` or `SENT` → `PAID`: triggered by `record_payment()` when payments equal total
-- Any non-DRAFT → `VOID`: records void reason; voids cannot be deleted
-- `VOID` can generate a new `DRAFT` (for corrections), which creates a new invoice with a new number
+- Any non-VOID → `VOID`: records void state; voids cannot be deleted
+- `VOID` can generate a new `DRAFT` (for corrections), which receives a new number when finalized
 
 ---
 
@@ -353,7 +353,7 @@ Key tables (see `src-tauri/src/db/schema.rs` for the complete DDL):
 | `exchange_rates` | Cached exchange rates with timestamp |
 | `recurring_schedules` | Recurring invoice schedule definitions |
 | `settings` | Key-value application settings |
-| `sequence_counters` | Gap-free invoice number sequence state |
+| `invoice_sequences` | Gap-free invoice number sequence state |
 | `changelog` | Write-ahead log for future sync |
 
 All primary keys are TEXT (UUID v4). All monetary columns are INTEGER (minor units). All timestamp columns are TEXT (ISO 8601).
