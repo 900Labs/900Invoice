@@ -102,13 +102,10 @@ On a 4-year-old laptop with 4 GB of RAM running three browser tabs, this differe
 
 ## Installation
 
-### Pre-built Binaries
+### Releases
 
-Download the latest release for your platform from the [releases page](https://github.com/900Labs/900Invoice/releases/latest):
-
-- **Windows**: `900Invoice-1.0.0.msi` (installer) or `900Invoice-1.0.0.exe` (portable)
-- **macOS**: `900Invoice-1.0.0.dmg`
-- **Linux**: `900Invoice-1.0.0.AppImage` | `900Invoice-1.0.0.deb` | `900Invoice-1.0.0.rpm`
+Tagged releases are published on the [releases page](https://github.com/900Labs/900Invoice/releases/latest) when available. The current release workflow publishes source archives and checksums.
+Signed Windows, macOS, and Linux installers are tracked as future release hardening. Until platform binaries are published, build from source.
 
 ### Build from Source
 
