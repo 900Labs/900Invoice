@@ -393,9 +393,9 @@ Install the [Microsoft Visual C++ Redistributable](https://docs.microsoft.com/en
 
 ### Application won't start after update
 
-If an application update corrupts the database, users can restore from a backup:
-1. Hold `Shift` during application startup to skip database loading
-2. Go to Settings → Restore Database
+If the application can still reach Settings, restore from a backup:
+1. Open Settings
+2. Use Restore Database
 3. Select a backup file
 
-If no backup exists, the database can be safely deleted and the application will create a new empty one. Data will be lost, but the application will function.
+If startup is blocked before Settings is available, move the database file out of the app data directory listed above and start the application again. The application will create a new empty database. Data from the moved database will remain unavailable unless it can be recovered or restored from a backup.
