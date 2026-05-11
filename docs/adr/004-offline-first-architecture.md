@@ -77,16 +77,16 @@ While v1.0.0 is offline-only, the schema includes a `changelog` table that recor
 
 ### Negative / Trade-offs
 - No automatic cross-device sync in v1.0.0 (planned for a future release)
-- Database backup is manual — users are responsible for their own backups (the app prompts for regular backups)
+- Database backup is manual; users are responsible for creating and storing their own backup files
 - Exchange rates require manual update or occasional internet access; rates can become stale
 
 ### Backup Strategy
 
 Because the user is responsible for their data, 900Invoice:
-1. Prompts users to create a backup every 30 days
-2. Provides a one-click backup to any local folder via Settings → Backup Database
-3. Provides one-click restore from backup via Settings → Restore Database
-4. The backup is a standard SQLite database file — it can be opened with any SQLite browser
+1. Provides manual backup export to a selected local JSON file via Settings → Backup Database
+2. Provides additive restore from a selected JSON backup via Settings → Restore Database
+3. Stores live application data in a standard local SQLite file at `{APP_DATA_DIR}/900invoice.db`
+4. Keeps the Settings backup format as a versioned JSON data snapshot, not a raw SQLite database copy
 
 ### Notes for Contributors
 

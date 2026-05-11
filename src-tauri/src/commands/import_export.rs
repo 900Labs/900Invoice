@@ -625,8 +625,8 @@ pub fn export_invoices_csv(db: State<'_, DbConn>) -> Result<String, String> {
     Ok(out)
 }
 
-/// Backup the entire database as a base64-encoded binary blob.
-/// The frontend is responsible for writing this to a file.
+/// Export a versioned JSON snapshot of application data.
+/// The frontend is responsible for writing this to a `.json` file.
 #[tauri::command]
 pub fn backup_database(db: State<'_, DbConn>) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
