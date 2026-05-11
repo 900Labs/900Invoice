@@ -209,6 +209,8 @@
     "nextNumber": "Nambari Inayofuata",
     "importClients": "Ingiza Wateja (CSV)",
     "exportClients": "Hamisha Wateja (CSV)",
+    "importProducts": "Ingiza Bidhaa (CSV)",
+    "exportProducts": "Hamisha Bidhaa (CSV)",
     "exportInvoices": "Hamisha Ankara (CSV)",
     "backupDatabase": "Hifadhi Nakala ya Hifadhidata",
     "restoreDatabase": "Rejesha Hifadhidata",

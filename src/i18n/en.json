@@ -209,6 +209,8 @@
     "nextNumber": "Next Number",
     "importClients": "Import Clients (CSV)",
     "exportClients": "Export Clients (CSV)",
+    "importProducts": "Import Products (CSV)",
+    "exportProducts": "Export Products (CSV)",
     "exportInvoices": "Export Invoices (CSV)",
     "backupDatabase": "Backup Database",
     "restoreDatabase": "Restore Database",

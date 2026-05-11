@@ -209,6 +209,8 @@
     "nextNumber": "الرقم التالي",
     "importClients": "استيراد العملاء (CSV)",
     "exportClients": "تصدير العملاء (CSV)",
+    "importProducts": "استيراد المنتجات (CSV)",
+    "exportProducts": "تصدير المنتجات (CSV)",
     "exportInvoices": "تصدير الفواتير (CSV)",
     "backupDatabase": "نسخ احتياطي لقاعدة البيانات",
     "restoreDatabase": "استعادة قاعدة البيانات",

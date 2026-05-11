@@ -160,7 +160,7 @@ The production binary will be in `src-tauri/target/release/bundle/`.
 │   └── lib/                # Tauri IPC wrappers
 ├── src-tauri/              # Rust backend
 │   └── src/
-│       ├── commands/       # 61 Tauri commands (IPC handlers)
+│       ├── commands/       # 63 Tauri commands (IPC handlers)
 │       ├── models/         # Data structures (Invoice, Client, etc.)
 │       ├── db/             # SQLite schema, migrations, queries
 │       ├── services/       # Tax calc, PDF engine, numbering
@@ -184,7 +184,7 @@ Your data never leaves your machine unless you explicitly export it.
 ## Documentation
 
 - [Architecture Overview](docs/ARCHITECTURE.md) — system design, data flow, money conventions
-- [API Documentation](docs/API.md) — complete Tauri command reference (61 commands)
+- [API Documentation](docs/API.md) — complete Tauri command reference (63 commands)
 - [PDF Rendering](docs/TEMPLATES.md) — invoice PDF/preview rendering notes
 - [Internationalization Guide](docs/I18N.md) — add languages, RTL support
 - [Deployment Guide](docs/DEPLOYMENT.md) — build and distribute for all platforms
