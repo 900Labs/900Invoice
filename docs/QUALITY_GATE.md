@@ -49,6 +49,14 @@ INSTALL_NODE_DEPS=1 SMOKE_PROFILE=full ./scripts/verify-runtime-smoke.sh
 
 Reference: `docs/RUNTIME_SMOKE.md`.
 
+For performance-sensitive changes or release candidates, also run:
+
+```bash
+./scripts/verify-performance-smoke.sh
+```
+
+This command is intentionally outside the required CI baseline because timing can vary by hardware and concurrent local workloads. Treat failures as release-readiness issues to investigate before tagging.
+
 ---
 
 ## CI Enforcement
@@ -92,6 +100,7 @@ Validation
 - CARGO_TARGET_DIR=/tmp/900invoice-target cargo check --manifest-path src-tauri/Cargo.toml: passed
 - CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml: passed (52 tests)
 - CARGO_TARGET_DIR=/tmp/900invoice-target cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings: passed
+- ./scripts/verify-performance-smoke.sh: passed
 ```
 
 ---

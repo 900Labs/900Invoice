@@ -216,6 +216,28 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL DEFAULT ''
         );
+
+        -- Query indexes for list/detail/export hot paths.
+        CREATE INDEX IF NOT EXISTS idx_clients_name
+            ON clients(name);
+        CREATE INDEX IF NOT EXISTS idx_products_active_name
+            ON products(is_active, name);
+        CREATE INDEX IF NOT EXISTS idx_invoices_created_at
+            ON invoices(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_invoices_client_id
+            ON invoices(client_id);
+        CREATE INDEX IF NOT EXISTS idx_invoice_line_items_invoice_sort
+            ON invoice_line_items(invoice_id, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_invoice_taxes_invoice_created
+            ON invoice_taxes(invoice_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_payments_invoice_paid_at
+            ON payments(invoice_id, paid_at);
+        CREATE INDEX IF NOT EXISTS idx_recurring_next_generation_status
+            ON recurring_invoices(status, next_generation_date);
+        CREATE INDEX IF NOT EXISTS idx_tax_rates_active_country_name
+            ON tax_rates(is_active, country_code, name);
+        CREATE INDEX IF NOT EXISTS idx_changelog_timestamp
+            ON changelog(timestamp);
         ",
     )?;
 
@@ -309,5 +331,27 @@ mod tests {
             )
             .expect("withholding tax count");
         assert_eq!(withholding_count, 3);
+
+        for index_name in [
+            "idx_clients_name",
+            "idx_products_active_name",
+            "idx_invoices_created_at",
+            "idx_invoices_client_id",
+            "idx_invoice_line_items_invoice_sort",
+            "idx_invoice_taxes_invoice_created",
+            "idx_payments_invoice_paid_at",
+            "idx_recurring_next_generation_status",
+            "idx_tax_rates_active_country_name",
+            "idx_changelog_timestamp",
+        ] {
+            let exists: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name=?1",
+                    [index_name],
+                    |row| row.get(0),
+                )
+                .expect("index exists query");
+            assert_eq!(exists, 1, "missing hot-path index {index_name}");
+        }
     }
 }

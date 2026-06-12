@@ -1,5 +1,5 @@
 // i18n store using Svelte 5 runes
-import type enJson from '../i18n/en.json';
+import enJson from '../i18n/en.json';
 
 type TranslationKeys = typeof enJson;
 
@@ -27,7 +27,7 @@ export async function loadTranslations(locale: string) {
         data = (await import('../i18n/hi.json')).default as Record<string, unknown>;
         break;
       default:
-        data = (await import('../i18n/en.json')).default as Record<string, unknown>;
+        data = enJson as Record<string, unknown>;
     }
     translations = data;
   } catch (e) {
@@ -51,7 +51,7 @@ export async function setLocale(locale: string) {
 
 export async function initI18n() {
   // Load English as fallback
-  const enData = (await import('../i18n/en.json')).default as Record<string, unknown>;
+  const enData = enJson as Record<string, unknown>;
   fallback = enData;
   translations = enData;
   currentLocale = 'en';

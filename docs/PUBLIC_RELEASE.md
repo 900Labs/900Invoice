@@ -9,7 +9,10 @@ Run these checks from a clean checkout on `main`:
 ```bash
 git status --short --branch
 git ls-files | rg '(^|/)\.DS_Store$|(^|/)Thumbs\.db$|(^|/)desktop\.ini$'
-git grep -n -I -E '(/Users/|/home/[^ /]+|C:\\Users\\|MacBook)' -- . ':(exclude)package-lock.json' ':(exclude)docs/PUBLIC_RELEASE.md'
+git grep -n -I -E '(/Users/[^ /]+|/home/[^ /]+|C:\\Users\\[^\\]+|Desktop/[A-Za-z0-9._-]+)' -- . ':(exclude)package-lock.json' ':(exclude)docs/PUBLIC_RELEASE.md'
+LOCAL_HOSTNAME="$(hostname -s 2>/dev/null || true)"
+test -z "$LOCAL_HOSTNAME" || git grep -n -I -F "$LOCAL_HOSTNAME" -- . ':(exclude)package-lock.json' ':(exclude)docs/PUBLIC_RELEASE.md'
+find . \( -name .DS_Store -o -name Thumbs.db -o -name desktop.ini \) -print
 ```
 
 Expected result:
@@ -17,6 +20,7 @@ Expected result:
 1. The worktree is clean.
 2. No tracked operating-system metadata files are reported.
 3. No personal local paths, usernames, hostnames, or machine-specific development paths are reported.
+4. No ignored local operating-system metadata files are present in the checkout.
 
 Notes:
 
@@ -39,7 +43,18 @@ Confirm these files are present and current:
 Check active documentation for stale implementation names before publishing:
 
 ```bash
-rg -n -F -e 'Rust 1.75+' -e 'Node.js 18+' -e 'SUPPORTED_LANGUAGES' -e 'src/i18n/index.ts' -e 'sequence_counters' -e 'services/numbering.rs' README.md CONTRIBUTING.md docs --glob '!docs/sprints/**' --glob '!docs/PUBLIC_RELEASE.md'
+rg -n -F \
+  -e 'Rust 1.75' \
+  -e 'Node.js 18' \
+  -e 'SUPPORTED_LANGUAGES' \
+  -e 'src/i18n/index.ts' \
+  -e 'src/stores/i18nStore.ts' \
+  -e '~45 commands' \
+  -e 'sequence_counters' \
+  -e 'services/numbering.rs' \
+  -e 'src-tauri/src/services/tax.rs' \
+  -e 'src-tauri/src/models/currency.rs' \
+  README.md CONTRIBUTING.md docs --glob '!docs/sprints/**' --glob '!docs/PUBLIC_RELEASE.md'
 ```
 
 Expected result: no matches.
@@ -58,10 +73,11 @@ Run the public release validation baseline:
 ./scripts/verify-api-doc-commands.sh
 npm run check
 SMOKE_PROFILE=full CARGO_TARGET_DIR=/tmp/900invoice-target-check ./scripts/verify-runtime-smoke.sh
+./scripts/verify-performance-smoke.sh
 git diff --check
 ```
 
-The full smoke script includes the frontend production build, Rust check, Rust tests, Rust doc tests, and clippy with warnings denied.
+The full smoke script includes the frontend production build, Rust check, Rust tests, Rust doc tests, and clippy with warnings denied. The performance smoke seeds a large in-memory dataset and checks list/detail/export/backup/PDF timing budgets.
 
 ## GitHub Readiness
 

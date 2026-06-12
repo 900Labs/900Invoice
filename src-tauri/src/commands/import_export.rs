@@ -597,7 +597,11 @@ pub fn export_products_csv(db: State<'_, DbConn>) -> Result<String, String> {
 #[tauri::command]
 pub fn export_invoices_csv(db: State<'_, DbConn>) -> Result<String, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
-    let invoices = db::queries::invoices::list_all(&conn).map_err(|e| e.to_string())?;
+    export_invoices_csv_content(&conn)
+}
+
+pub(crate) fn export_invoices_csv_content(conn: &Connection) -> Result<String, String> {
+    let invoices = db::queries::invoices::list_all(conn).map_err(|e| e.to_string())?;
 
     let mut out = String::from(
         "invoice_number,client_id,status,currency_code,subtotal,discount,tax_amount,total,amount_paid,issue_date,due_date,created_at\n",
@@ -630,28 +634,31 @@ pub fn export_invoices_csv(db: State<'_, DbConn>) -> Result<String, String> {
 #[tauri::command]
 pub fn backup_database(db: State<'_, DbConn>) -> Result<serde_json::Value, String> {
     let conn = db.lock().map_err(|e| e.to_string())?;
+    backup_database_value(&conn)
+}
 
+pub(crate) fn backup_database_value(conn: &Connection) -> Result<serde_json::Value, String> {
     // Export every table as JSON
-    let clients = db::queries::clients::list_all(&conn).map_err(|e| e.to_string())?;
-    let invoices = db::queries::invoices::list_all(&conn).map_err(|e| e.to_string())?;
-    let products = list_products_for_backup(&conn)?;
-    let tax_rates = list_tax_rates_for_backup(&conn)?;
-    let line_items = list_line_items_for_backup(&conn)?;
-    let invoice_taxes = list_invoice_taxes_for_backup(&conn)?;
+    let clients = db::queries::clients::list_all(conn).map_err(|e| e.to_string())?;
+    let invoices = db::queries::invoices::list_all(conn).map_err(|e| e.to_string())?;
+    let products = list_products_for_backup(conn)?;
+    let tax_rates = list_tax_rates_for_backup(conn)?;
+    let line_items = list_line_items_for_backup(conn)?;
+    let invoice_taxes = list_invoice_taxes_for_backup(conn)?;
     let payments: Vec<_> = {
         let mut all = Vec::new();
         for inv in &invoices {
-            let p = db::queries::payments::list_for_invoice(&conn, &inv.id)
+            let p = db::queries::payments::list_for_invoice(conn, &inv.id)
                 .map_err(|e| e.to_string())?;
             all.extend(p);
         }
         all
     };
-    let settings = db::queries::settings::get_all(&conn).map_err(|e| e.to_string())?;
-    let business = db::queries::business::get(&conn).map_err(|e| e.to_string())?;
-    let recurring = db::queries::recurring::list_all(&conn).map_err(|e| e.to_string())?;
-    let exchange_rates = list_exchange_rates_for_backup(&conn)?;
-    let invoice_sequences = list_invoice_sequences_for_backup(&conn)?;
+    let settings = db::queries::settings::get_all(conn).map_err(|e| e.to_string())?;
+    let business = db::queries::business::get(conn).map_err(|e| e.to_string())?;
+    let recurring = db::queries::recurring::list_all(conn).map_err(|e| e.to_string())?;
+    let exchange_rates = list_exchange_rates_for_backup(conn)?;
+    let invoice_sequences = list_invoice_sequences_for_backup(conn)?;
 
     let backup = serde_json::json!({
         "version": "1.0",

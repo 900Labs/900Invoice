@@ -1,6 +1,8 @@
 mod commands;
 mod db;
 mod models;
+#[cfg(test)]
+mod perf_smoke;
 mod services;
 mod sync;
 

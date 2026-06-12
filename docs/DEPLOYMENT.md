@@ -83,17 +83,19 @@ npm install
 cargo tauri build
 ```
 
-Local `cargo tauri build` output is written under `src-tauri/target/release/bundle/`. Exact artifacts vary by host OS, target architecture, and local Tauri bundler configuration. Typical local outputs include:
+Local `cargo tauri build` output is written under `src-tauri/target/release/bundle/`. The repository's Tauri config enables desktop app bundle targets and points at checked-in desktop icon assets. Exact artifacts vary by host OS and target architecture. Typical local outputs include:
 
 | Platform | Output Location | File |
 |----------|----------------|------|
 | Linux | `bundle/appimage/` | `900invoice_1.0.0_amd64.AppImage` |
 | Linux | `bundle/deb/` | `900invoice_1.0.0_amd64.deb` |
 | Linux | `bundle/rpm/` | `900invoice-1.0.0-1.x86_64.rpm` |
-| macOS | `bundle/dmg/` | `900Invoice_1.0.0_x64.dmg` |
+| macOS | `bundle/dmg/` | `900Invoice_1.0.0_aarch64.dmg` on Apple Silicon or `900Invoice_1.0.0_x64.dmg` on Intel |
 | macOS | `bundle/macos/` | `900Invoice.app` |
 | Windows | `bundle/msi/` | `900Invoice_1.0.0_x64_en-US.msi` |
 | Windows | `bundle/nsis/` | `900Invoice_1.0.0_x64-setup.exe` |
+
+Local macOS bundles are suitable for same-machine smoke testing. Public macOS distribution still requires Developer ID signing and notarization; unsigned or ad hoc signed local builds should not be treated as release-ready artifacts.
 
 ---
 
@@ -167,7 +169,7 @@ Code signing is required to distribute on macOS without Gatekeeper warnings.
 ```
 APPLE_CERTIFICATE             # Base64-encoded .p12 certificate
 APPLE_CERTIFICATE_PASSWORD    # Certificate password
-APPLE_SIGNING_IDENTITY        # "Developer ID Application: Your Name (TEAM_ID)"
+APPLE_SIGNING_IDENTITY        # "Developer ID Application: Organization Name (TEAM_ID)"
 APPLE_ID                      # Your Apple ID email
 APPLE_PASSWORD                # App-specific password (from appleid.apple.com)
 APPLE_TEAM_ID                 # Your Apple Team ID

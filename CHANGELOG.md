@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added governance webhook retry/backoff controls (`GOVERNANCE_INCIDENT_WEBHOOK_MAX_ATTEMPTS`, `GOVERNANCE_INCIDENT_WEBHOOK_BACKOFF_SECONDS`).
 - Added optional HMAC-signed governance webhook delivery using `GOVERNANCE_INCIDENT_WEBHOOK_HMAC_SECRET`.
 - Added governance artifact inventory workflow (`.github/workflows/governance-artifact-inventory.yml`) with scheduled/dispatch reporting outputs.
+- Added a sorted documentation index at `docs/README.md`.
+- Added Sprint 064 documentation cleanup and privacy-audit record.
+- Added a dedicated performance smoke script for large-dataset list/detail/export/backup/PDF timing checks.
+- Added hot-path SQLite indexes for common list, detail, recurring, backup, and export queries.
+- Added Sprint 065 performance smoke and query-indexing record.
+- Added a standard desktop Tauri icon set (`32x32`, `128x128`, `icns`, and `ico`) for platform bundles.
+- Added Sprint 066 macOS bundle verification record.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
@@ -113,6 +120,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated PR template to include maintainer governance checklist confirmation for governance-impacting changes.
 - Updated release runbook and release workflow to enforce governance checklist verification before release builds.
 - Updated governance checklist script with optional report output for release-trace generation.
+- Enabled explicit Tauri `app` and `dmg` bundle targets so `cargo tauri build` emits macOS test artifacts from the checked-in config.
+- Replaced the corrupt placeholder Tauri icon with a valid generated invoice icon so macOS app resources are included in local bundles.
 - Updated governance checklist enforcement with optional strict mode (`STRICT_SPRINT_DOC_REFERENCE`) for all changed sprint docs.
 - Updated governance checklist completion-block linting to fail on duplicate, nested, or unbalanced block markers.
 - Updated governance audit runbook and maintainer checklist with optional external incident webhook setup guidance.
@@ -127,6 +136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated frontend type-check command to use `svelte-check --workspace src --tsconfig ../tsconfig.json` for deterministic diagnostics in constrained environments.
 - Updated frontend tooling dependencies by pinning `@sveltejs/vite-plugin-svelte` to `6.0.0` and `@sveltejs/vite-plugin-svelte-inspector` to `5.0.0` for reproducible smoke/build behavior.
 - Added an npm override for `aria-query@5.3.2` to keep Svelte compiler imports/builds reproducible when `svelte@5.53.7` requests the broken `aria-query@5.3.1` package contents.
+- Refreshed public contributor, i18n, deployment, and release-readiness docs to match the current Rust/Node prerequisites, Svelte rune store filenames, command count, tax-rate seeding path, and currency-extension paths.
 
 ### Fixed
 

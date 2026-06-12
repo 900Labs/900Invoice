@@ -25,6 +25,10 @@ The smoke script supports two profiles:
 2. `full`
    - everything in `baseline`
    - adds `cargo clippy -- -D warnings`
+3. `performance`
+   - seeds a large in-memory dataset
+   - measures invoice/client/product list queries, invoice detail fanout, invoice CSV export, JSON backup, and native PDF generation
+   - enforces generous budgets unless `PERF_SMOKE_ENFORCE_BUDGETS=0`
 
 ---
 
@@ -66,6 +70,18 @@ Release-grade smoke:
 INSTALL_NODE_DEPS=1 SMOKE_PROFILE=full ./scripts/verify-runtime-smoke.sh
 ```
 
+Performance smoke:
+
+```bash
+./scripts/verify-performance-smoke.sh
+```
+
+Larger local profile:
+
+```bash
+PERF_SMOKE_CLIENTS=1000 PERF_SMOKE_PRODUCTS=500 PERF_SMOKE_INVOICES=5000 PERF_SMOKE_LINES_PER_INVOICE=5 ./scripts/verify-performance-smoke.sh
+```
+
 ---
 
 ## Legacy Hardware Mode
@@ -79,6 +95,30 @@ When `LEGACY_HARDWARE=1`, the script applies conservative defaults:
 5. `NPM_CONFIG_PROGRESS=false`
 
 These settings reduce peak memory/CPU pressure and avoid unnecessary network/audit overhead.
+
+---
+
+## Performance Smoke Controls
+
+`scripts/verify-performance-smoke.sh` runs ignored Rust tests so normal `cargo test` stays fast. The default profile is intentionally moderate:
+
+1. `PERF_SMOKE_CLIENTS=500`
+2. `PERF_SMOKE_PRODUCTS=300`
+3. `PERF_SMOKE_INVOICES=1000`
+4. `PERF_SMOKE_LINES_PER_INVOICE=3`
+5. `PERF_SMOKE_ENFORCE_BUDGETS=1`
+
+Budget overrides:
+
+1. `PERF_SMOKE_CLIENTS_LIST_MS`
+2. `PERF_SMOKE_PRODUCTS_LIST_MS`
+3. `PERF_SMOKE_INVOICES_LIST_MS`
+4. `PERF_SMOKE_DETAIL_FANOUT_MS`
+5. `PERF_SMOKE_INVOICE_CSV_MS`
+6. `PERF_SMOKE_BACKUP_MS`
+7. `PERF_SMOKE_PDF_MS`
+
+Set `PERF_SMOKE_ENFORCE_BUDGETS=0` when collecting exploratory timing evidence on very slow or heavily loaded hardware.
 
 ---
 
@@ -101,4 +141,5 @@ Include smoke results in PR validation, for example:
 Validation
 - INSTALL_NODE_DEPS=1 SMOKE_PROFILE=baseline LEGACY_HARDWARE=1 ./scripts/verify-runtime-smoke.sh: passed
 - INSTALL_NODE_DEPS=1 SMOKE_PROFILE=full ./scripts/verify-runtime-smoke.sh: passed
+- ./scripts/verify-performance-smoke.sh: passed
 ```
