@@ -141,7 +141,7 @@ cargo tauri dev
 cargo tauri build
 ```
 
-The production binary will be in `src-tauri/target/release/bundle/`.
+Production app bundles and installers are written under `src-tauri/target/release/bundle/`.
 
 ## Project Structure
 
@@ -186,10 +186,11 @@ Your data never leaves your machine unless you explicitly export it.
 
 **Build and use**
 
+- [Documentation Index](docs/README.md) — sorted guide to public docs, runbooks, ADRs, and sprint records
 - [Deployment Guide](docs/DEPLOYMENT.md) — source builds, local bundles, platform notes, and data locations
 - [Public Release Checklist](docs/PUBLIC_RELEASE.md) — repository visibility, privacy, and documentation readiness checks
 - [Release Runbook](docs/RELEASE.md) — tagged release flow, artifacts, checksums, and release checklist
-- [Runtime Smoke Runbook](docs/RUNTIME_SMOKE.md) — release-readiness smoke verification, including legacy-hardware mode
+- [Runtime Smoke Runbook](docs/RUNTIME_SMOKE.md) — release-readiness smoke verification, including legacy-hardware and performance-smoke modes
 
 **Product and architecture**
 

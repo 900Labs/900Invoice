@@ -36,7 +36,7 @@ This project follows our [Code of Conduct](CODE_OF_CONDUCT.md). By participating
 
 Before you can build 900Invoice, you need:
 
-### 1. Rust (1.75 or later)
+### 1. Rust (1.88 or later)
 
 ```bash
 # Install rustup (the Rust version manager)
@@ -49,9 +49,9 @@ cargo --version
 
 If you are on Windows, download the installer from [rustup.rs](https://rustup.rs).
 
-### 2. Node.js (18 or later)
+### 2. Node.js (20.19+, 22.12+, or 24+)
 
-Download from [nodejs.org](https://nodejs.org). We recommend the LTS version.
+Download from [nodejs.org](https://nodejs.org). Use a version that satisfies the `package.json` engine range.
 
 ```bash
 # Verify installation
@@ -107,8 +107,8 @@ Full Tauri prerequisites documentation: [v2.tauri.app/start/prerequisites](https
 
 ```bash
 # 1. Fork the repository on GitHub, then clone your fork
-git clone https://github.com/YOUR_USERNAME/900invoice.git
-cd 900invoice
+git clone https://github.com/YOUR_GITHUB_USERNAME/900Invoice.git
+cd 900Invoice
 
 # 2. Add the upstream remote
 git remote add upstream https://github.com/900Labs/900Invoice.git
@@ -156,7 +156,7 @@ The same gate is enforced in CI at `.github/workflows/ci.yml`.
 ## Project Structure
 
 ```
-900invoice/
+900Invoice/
 ├── src/                          # Svelte 5 frontend
 │   ├── components/
 │   │   ├── invoices/             # Invoice form, list, PDF preview
@@ -177,7 +177,7 @@ The same gate is enforced in CI at `.github/workflows/ci.yml`.
 │   └── lib/                      # Tauri IPC wrappers (invoke calls)
 ├── src-tauri/
 │   └── src/
-│       ├── commands/             # Tauri IPC command handlers (~45 commands)
+│       ├── commands/             # Tauri IPC command handlers (63 commands)
 │       │   ├── business.rs       # Business profile commands
 │       │   ├── clients.rs        # Client CRUD commands
 │       │   ├── invoices.rs       # Invoice lifecycle commands
@@ -194,7 +194,7 @@ The same gate is enforced in CI at `.github/workflows/ci.yml`.
 │       ├── models/               # Rust data structures (Invoice, Client, etc.)
 │       ├── db/                   # SQLite: schema, migrations, typed queries
 │       ├── services/             # Business logic (tax engine, PDF, numbering)
-│       ├── templates/            # Typst invoice template (invoice.typ)
+│       ├── templates/            # Historical template/design references
 │       └── sync/                 # Changelog-based sync infrastructure
 └── docs/                         # Documentation and ADRs
 ```
@@ -213,7 +213,7 @@ The same gate is enforced in CI at `.github/workflows/ci.yml`.
 - **Document public functions.** All `pub` functions must have a `///` doc comment explaining what they do, their parameters, and what errors they return.
 
 Example of correct error handling:
-```rust
+```sql
 // CORRECT
 pub fn get_invoice(conn: &Connection, id: &str) -> Result<Invoice, DbError> {
     let invoice = conn
@@ -231,7 +231,7 @@ pub fn get_invoice(conn: &Connection, id: &str) -> Invoice {
 ### Svelte / TypeScript
 
 - **Svelte 5 Runes only.** Do not use Svelte 4 reactive stores (`writable`, `readable`, `derived`). Use `$state`, `$derived`, and `$effect` instead.
-- **All displayed text must go through `i18n`.** No hardcoded strings in templates. Use `$t('key.name')` for all user-visible text.
+- **All displayed text must go through `i18n`.** No hardcoded strings in templates. Use the local `t('key.name')` helper for user-visible text.
 - **Type everything.** Avoid `any`. The ESLint rule for `@typescript-eslint/no-explicit-any` is set to `warn` but should be treated as an error for new code.
 - **Component naming**: PascalCase for components, kebab-case for files (`InvoiceForm.svelte`).
 
@@ -319,14 +319,14 @@ let tax = (subtotal as f64 * rate_bps as f64 / 10000.0) as i64;
    }
    ```
 
-3. **Register the language** in `src/stores/i18nStore.ts` by adding a `loadTranslations()` case:
+3. **Register the language** in `src/stores/i18nStore.svelte.ts` by adding a `loadTranslations()` case:
    ```typescript
    case 'XX':
      data = (await import('../i18n/XX.json')).default as Record<string, unknown>;
      break;
    ```
 
-4. **Add the language** to `SUPPORTED_LOCALES` in `src/stores/i18nStore.ts`:
+4. **Add the language** to `SUPPORTED_LOCALES` in `src/stores/i18nStore.svelte.ts`:
    ```typescript
    export const SUPPORTED_LOCALES = [
      { code: 'en', name: 'English', nativeName: 'English' },
@@ -340,7 +340,7 @@ let tax = (subtotal as f64 * rate_bps as f64 / 10000.0) as i64;
 5. **Configure locale formatting** in `src/utils/locale.ts` if your language needs a specific date or number locale.
 
 6. **For RTL languages (Arabic, Hebrew, Urdu, Persian, etc.):**
-   - Update the RTL branch in `setLocale()` inside `src/stores/i18nStore.ts` to include your locale code
+   - Update the RTL branch in `setLocale()` inside `src/stores/i18nStore.svelte.ts` to include your locale code
    - The i18n store applies `dir="rtl"` to the `<html>` element when an RTL language is active
    - Test all layouts in RTL mode — flex/grid directions may need CSS adjustments
 
@@ -356,83 +356,38 @@ let tax = (subtotal as f64 * rate_bps as f64 / 10000.0) as i64;
 
 ## How to Add a New Tax Rate
 
-Tax rates are defined in `src-tauri/src/services/tax.rs` in the `default_tax_rates()` function.
+Seeded default tax rates are defined in `src-tauri/src/db/migrations.rs` as `INSERT OR IGNORE INTO tax_rates` rows. Runtime tax calculations live in `src-tauri/src/services/tax_calculator.rs`.
 
 ```rust
-// In src-tauri/src/services/tax.rs
-pub fn default_tax_rates() -> Vec<TaxRate> {
-    vec![
-        // Add your country's tax rates here
-        TaxRate {
-            id: Uuid::new_v4().to_string(),
-            name: "VAT".to_string(),
-            country_code: "KE".to_string(),   // ISO 3166-1 alpha-2 country code
-            rate_bps: 1600,                    // 16.00% = 1600 basis points
-            tax_type: TaxType::Vat,
-            is_default: true,
-            applies_to_services: true,
-            applies_to_goods: true,
-        },
-        // Your new tax rate:
-        TaxRate {
-            id: Uuid::new_v4().to_string(),
-            name: "GST".to_string(),           // The name as it appears on invoices
-            country_code: "BD".to_string(),    // Bangladesh
-            rate_bps: 1500,                    // 15.00%
-            tax_type: TaxType::Gst,
-            is_default: true,
-            applies_to_services: true,
-            applies_to_goods: true,
-        },
-    ]
-}
+INSERT OR IGNORE INTO tax_rates
+    (id, name, display_name, rate_bps, country_code, is_default, is_withholding)
+VALUES
+    ('tax-bd-vat', 'VAT', 'VAT @ 15%', 1500, 'BD', 1, 0);
 ```
 
 **For withholding tax** (a tax deducted at source, applied to the payment not the invoice total):
-```rust
-TaxRate {
-    name: "WHT (Services)".to_string(),
-    country_code: "NG".to_string(),
-    rate_bps: 500,                       // 5.00%
-    tax_type: TaxType::Withholding,
-    // ...
-}
+```sql
+INSERT OR IGNORE INTO tax_rates
+    (id, name, display_name, rate_bps, country_code, is_default, is_withholding)
+VALUES
+    ('tax-bd-wht', 'WHT', 'WHT @ 5%', 500, 'BD', 0, 1);
 ```
 
-Add a test in `src-tauri/src/services/tax.rs` that verifies your rate calculates correctly:
-```rust
-#[test]
-fn test_bangladesh_gst() {
-    let rate = TaxRate { rate_bps: 1500, tax_type: TaxType::Gst, ..Default::default() };
-    // 100,000 (= 1000.00 BDT) × 15% = 15,000 (= 150.00 BDT)
-    assert_eq!(calculate_tax_exclusive(100_000, &rate), 15_000);
-}
-```
+Add or update migration tests in `src-tauri/src/db/migrations.rs` and tax-calculation tests in `src-tauri/src/services/tax_calculator.rs` when the calculation behavior changes.
 
 ---
 
 ## How to Add a New Currency
 
-Currencies are defined in `src-tauri/src/models/currency.rs`.
+Currency support is split between frontend display, import/export parsing, PDF rendering, and exchange-rate data. Keep all of these paths aligned.
 
-```rust
-// In src-tauri/src/models/currency.rs
-pub const SUPPORTED_CURRENCIES: &[Currency] = &[
-    // Existing currencies...
-    Currency {
-        code: "BDT",           // ISO 4217 currency code
-        name: "Bangladeshi Taka",
-        symbol: "৳",
-        decimal_places: 2,     // 0 for currencies with no minor unit (UGX, XOF, XAF)
-        country_codes: &["BD"],
-    },
-];
-```
+When adding a currency:
 
-Also update:
-1. `src/utils/currency.ts` — add the display formatter and symbol
-2. `src/i18n/en.json` — add `currency.BDT: "Bangladeshi Taka"` and translate in all other language files
-3. Update the currency table in `README.md` and `docs/API.md`
+1. `src/utils/currency.ts` — add the symbol and decimal-place configuration.
+2. `src-tauri/src/services/pdf_engine.rs` — add the PDF/HTML currency formatting configuration.
+3. `src-tauri/src/commands/import_export.rs` — update CSV price parsing and formatting decimals if needed.
+4. `src/i18n/en.json` and the other locale files — add translated labels if the UI exposes the currency by name.
+5. `README.md`, `docs/API.md`, and tests — update public docs and validation coverage.
 
 ---
 
