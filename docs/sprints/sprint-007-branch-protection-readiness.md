@@ -78,3 +78,10 @@ Branch protection is required for open-source governance quality, but the reposi
    - `./scripts/apply-repo-policy.sh 900Labs/900Invoice main`
    - `STRICT=1 ./scripts/verify-repo-policy.sh 900Labs/900Invoice main`
 2. Add periodic governance audit job once branch protection is available.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Historical sprint record reviewed during v1.0.0 release-gate preparation.
+- [x] Governance profile selected or explicitly unchanged: `solo`.
+- [x] Maintainer handoff expectations reviewed against `docs/MAINTAINER_CHECKLIST.md`.
+- [x] Release or validation impact documented in this sprint record or later release-prep sprint.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->

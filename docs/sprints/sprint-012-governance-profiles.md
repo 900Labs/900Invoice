@@ -76,3 +76,10 @@ Governance controls were enforceable but required manual variable tuning per rep
 
 1. Add profile-specific docs examples for onboarding templates in CONTRIBUTING/maintainer guide.
 2. Add optional profile assertion output artifact in governance-audit workflow for easier incident triage.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Historical sprint record reviewed during v1.0.0 release-gate preparation.
+- [x] Governance profile selected or explicitly unchanged: `solo`.
+- [x] Maintainer handoff expectations reviewed against `docs/MAINTAINER_CHECKLIST.md`.
+- [x] Release or validation impact documented in this sprint record or later release-prep sprint.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->

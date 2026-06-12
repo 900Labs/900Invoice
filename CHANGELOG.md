@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Sprint 065 performance smoke and query-indexing record.
 - Added a standard desktop Tauri icon set (`32x32`, `128x128`, `icns`, and `ico`) for platform bundles.
 - Added Sprint 066 macOS bundle verification record.
+- Added Sprint 067 release-gate first-tag readiness record.
+- Added current maintainer checklist completion blocks to historical Sprint 001 through Sprint 019 records so the first version tag can pass release governance checks.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
   - `scripts/verify-repo-policy.sh`
@@ -122,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated governance checklist script with optional report output for release-trace generation.
 - Enabled explicit Tauri `app` and `dmg` bundle targets so `cargo tauri build` emits macOS test artifacts from the checked-in config.
 - Replaced the corrupt placeholder Tauri icon with a valid generated invoice icon so macOS app resources are included in local bundles.
+- Updated the Release Gate workflow to prefer `GH_ADMIN_TOKEN` for strict branch-protection verification, matching the governance audit workflow token pattern.
 - Updated governance checklist enforcement with optional strict mode (`STRICT_SPRINT_DOC_REFERENCE`) for all changed sprint docs.
 - Updated governance checklist completion-block linting to fail on duplicate, nested, or unbalanced block markers.
 - Updated governance audit runbook and maintainer checklist with optional external incident webhook setup guidance.

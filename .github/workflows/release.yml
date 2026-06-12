@@ -49,12 +49,14 @@ jobs:
       - name: Verify repository policy (strict)
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+          GH_FALLBACK_TOKEN: ${{ github.token }}
           GOVERNANCE_PROFILE: ${{ vars.GOVERNANCE_PROFILE || 'solo' }}
           REQUIRED_APPROVING_REVIEW_COUNT: ${{ vars.REQUIRED_APPROVING_REVIEW_COUNT || '' }}
           REQUIRE_CODE_OWNER_REVIEWS: ${{ vars.REQUIRE_CODE_OWNER_REVIEWS || '' }}
           REQUIRE_LAST_PUSH_APPROVAL: ${{ vars.REQUIRE_LAST_PUSH_APPROVAL || '' }}
         run: |
+          export GH_TOKEN="${GH_ADMIN_TOKEN:-$GH_FALLBACK_TOKEN}"
           if [[ -z "${REQUIRED_APPROVING_REVIEW_COUNT}" ]]; then
             unset REQUIRED_APPROVING_REVIEW_COUNT
           fi

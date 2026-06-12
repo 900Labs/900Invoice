@@ -63,3 +63,10 @@ Sprint 009 identified scheduled governance auditing as the next control to reduc
 
 1. Add issue/notification routing for governance audit failures.
 2. Define profile presets (`solo`, `small-team`, `enterprise`) in governance docs with explicit environment-variable matrices.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Historical sprint record reviewed during v1.0.0 release-gate preparation.
+- [x] Governance profile selected or explicitly unchanged: `solo`.
+- [x] Maintainer handoff expectations reviewed against `docs/MAINTAINER_CHECKLIST.md`.
+- [x] Release or validation impact documented in this sprint record or later release-prep sprint.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->

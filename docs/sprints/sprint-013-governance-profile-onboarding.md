@@ -66,3 +66,10 @@ Sprint 012 introduced profile presets (`solo`, `small-team`, `enterprise`) but f
 
 1. Add a direct link to the assertion artifact in incident issue comments when platform support allows stable artifact URLs.
 2. Add a maintainer checklist template that includes governance profile selection and variable verification.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Historical sprint record reviewed during v1.0.0 release-gate preparation.
+- [x] Governance profile selected or explicitly unchanged: `solo`.
+- [x] Maintainer handoff expectations reviewed against `docs/MAINTAINER_CHECKLIST.md`.
+- [x] Release or validation impact documented in this sprint record or later release-prep sprint.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->

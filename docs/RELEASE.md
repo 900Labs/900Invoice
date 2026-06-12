@@ -109,6 +109,8 @@ Release workflow governance verification defaults to `solo` unless repository va
 6. `GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`; shared default `30`)
 7. `RELEASE_GOVERNANCE_ARTIFACT_RETENTION_DAYS` (`1`-`90`; optional release-workflow override)
 
+Strict repository-policy verification reads live branch-protection settings. Configure `GH_ADMIN_TOKEN` as a repository secret with repository administration read access before running the release workflow; otherwise GitHub's default workflow token may be unable to read branch protection.
+
 ---
 
 ## Post-Release Checklist
