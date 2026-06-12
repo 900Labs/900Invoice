@@ -63,3 +63,10 @@ Sprint 002 introduced security hardening for CSV export sanitization and logo fi
 
 1. Add restore-path validation tests for malformed backup payloads.
 2. Add invoice/payment lifecycle integration tests over an isolated in-memory SQLite DB.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Historical sprint record reviewed during v1.0.0 release-gate preparation.
+- [x] Governance profile selected or explicitly unchanged: `solo`.
+- [x] Maintainer handoff expectations reviewed against `docs/MAINTAINER_CHECKLIST.md`.
+- [x] Release or validation impact documented in this sprint record or later release-prep sprint.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->

@@ -69,3 +69,10 @@ The repository is now public, so branch protection can be fully activated and st
 
 1. Add scheduled policy-audit workflow (nightly/weekly) with alerting on drift.
 2. Add repo-ruleset evaluation for broader governance controls as needed.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Historical sprint record reviewed during v1.0.0 release-gate preparation.
+- [x] Governance profile selected or explicitly unchanged: `solo`.
+- [x] Maintainer handoff expectations reviewed against `docs/MAINTAINER_CHECKLIST.md`.
+- [x] Release or validation impact documented in this sprint record or later release-prep sprint.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->

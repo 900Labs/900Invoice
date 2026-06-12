@@ -65,3 +65,10 @@ The previous API documentation had significant drift from the actual Tauri comma
 
 1. Add schema-level validation for command argument/return contracts beyond command names.
 2. Introduce API changelog sectioning by command module for release notes.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Historical sprint record reviewed during v1.0.0 release-gate preparation.
+- [x] Governance profile selected or explicitly unchanged: `solo`.
+- [x] Maintainer handoff expectations reviewed against `docs/MAINTAINER_CHECKLIST.md`.
+- [x] Release or validation impact documented in this sprint record or later release-prep sprint.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->

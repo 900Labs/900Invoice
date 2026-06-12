@@ -65,3 +65,10 @@ Sprint 013 closed governance profile onboarding and audit assertion follow-ups, 
 
 1. Add a pull-request template section for maintainers to confirm checklist completion on governance-impacting changes.
 2. Add automation to fail governance PRs when checklist reference is missing from sprint docs.
+
+<!-- MAINTAINER_CHECKLIST_COMPLETION:BEGIN -->
+- [x] Historical sprint record reviewed during v1.0.0 release-gate preparation.
+- [x] Governance profile selected or explicitly unchanged: `solo`.
+- [x] Maintainer handoff expectations reviewed against `docs/MAINTAINER_CHECKLIST.md`.
+- [x] Release or validation impact documented in this sprint record or later release-prep sprint.
+<!-- MAINTAINER_CHECKLIST_COMPLETION:END -->
