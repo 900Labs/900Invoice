@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Sprint 066 macOS bundle verification record.
 - Added Sprint 067 release-gate first-tag readiness record.
 - Added Sprint 068 Node 24 GitHub Actions cleanup record.
+- Added Sprint 069 dependency and security cleanup record.
 - Added current maintainer checklist completion blocks to historical Sprint 001 through Sprint 019 records so the first version tag can pass release governance checks.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
@@ -114,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rewrote `docs/API.md` to match the live Tauri command surface in `src-tauri/src/lib.rs`.
 - Added CI step to enforce API docs command-catalog parity.
 - Updated deployment documentation to align with the current automated release model.
+- Refreshed npm and Rust lockfiles to clear npm audit findings and reduce RustSec advisory warnings before public release.
 - Enforced squash-only merge settings and auto-delete-on-merge at repository level.
 - Activated `main` branch protection and strict governance verification.
 - Added strict repository-policy verification step to release workflow.
