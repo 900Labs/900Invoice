@@ -28,7 +28,7 @@ jobs:
       RELEASE_GOVERNANCE_ARTIFACT_RETENTION_DAYS: ${{ vars.RELEASE_GOVERNANCE_ARTIFACT_RETENTION_DAYS || '' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -154,7 +154,7 @@ jobs:
 
       - name: Upload governance diff context artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-governance-diff-context-${{ steps.meta.outputs.tag }}
           retention-days: ${{ steps.retention.outputs.retention_days }}
@@ -164,9 +164,9 @@ jobs:
           if-no-files-found: warn
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Setup Rust
@@ -213,7 +213,7 @@ jobs:
           shasum -a 256 "${out}" > SHA256SUMS.txt
 
       - name: Upload release-gate artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-gate-${{ steps.meta.outputs.tag }}
           path: |
@@ -222,7 +222,7 @@ jobs:
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: 900Invoice ${{ steps.meta.outputs.tag }}
           generate_release_notes: true
