@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Sprint 067 release-gate first-tag readiness record.
 - Added Sprint 068 Node 24 GitHub Actions cleanup record.
 - Added Sprint 069 dependency and security cleanup record.
+- Added Sprint 070 release hygiene and local preflight record.
+- Added a local release preflight script that detects macOS dataless/offloaded git metadata and tracked files.
 - Added current maintainer checklist completion blocks to historical Sprint 001 through Sprint 019 records so the first version tag can pass release governance checks.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
