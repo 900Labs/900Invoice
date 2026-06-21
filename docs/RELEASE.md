@@ -29,25 +29,42 @@ Before creating a release tag:
 
 Use `docs/MAINTAINER_CHECKLIST.md` for maintainer governance/profile verification before this checklist.
 
-1. Ensure `main` is green in CI.
-2. Verify repository policy:
+1. Start from a hydrated, clean local checkout on `main`:
+   - `git checkout main`
+   - `git pull --ff-only origin main`
+   - `./scripts/verify-local-preflight.sh`
+2. Ensure `main` is green in CI.
+3. Verify repository policy:
    - `./scripts/verify-repo-policy.sh 900Labs/900Invoice main`
    - (`STRICT=1` is default and required for releases)
    - If using non-`solo` governance, set matching profile env vars (for example `GOVERNANCE_PROFILE=small-team`).
-3. Verify governance sprint checklist parity (same rule enforced in CI + release gate):
+4. Verify governance sprint checklist parity (same rule enforced in CI + release gate):
    - `./scripts/verify-governance-sprint-checklist.sh origin/main HEAD`
    - `REPORT_JSON_PATH=/tmp/release-governance-diff-context.json ./scripts/verify-governance-sprint-checklist.sh origin/main HEAD`
    - `./scripts/verify-governance-trace-json.sh /tmp/release-governance-diff-context.json`
-4. Run local quality gate:
+5. Run local quality gate:
    - `./scripts/verify-api-doc-commands.sh`
    - `npm install`
    - `npm run check`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo check --manifest-path src-tauri/Cargo.toml`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo test --manifest-path src-tauri/Cargo.toml`
    - `CARGO_TARGET_DIR=/tmp/900invoice-target cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings`
-5. Confirm changelog and sprint documentation are updated.
-6. For public repository visibility changes or public release prep, complete `docs/PUBLIC_RELEASE.md`.
-7. Confirm the target version is reflected in release notes/changelog.
+6. Confirm changelog and sprint documentation are updated.
+7. For public repository visibility changes or public release prep, complete `docs/PUBLIC_RELEASE.md`.
+8. Confirm the target version is reflected in release notes/changelog.
+
+### macOS Local Storage Preflight
+
+On macOS, release and packaging work should run from a fully hydrated checkout. If Desktop/Documents is synced by iCloud and Optimize Mac Storage is enabled, macOS can leave repository files or `.git` metadata as dataless placeholders. That can cause `git status`, dependency installs, Cargo builds, or Tauri packaging to hang or fail while reading small files.
+
+Use `./scripts/verify-local-preflight.sh` before tags, packaging builds, or manual release-gate dry runs. The script checks:
+
+1. `.git` metadata is readable and not macOS dataless/offloaded.
+2. Tracked working-tree files exist and are not macOS dataless/offloaded.
+3. Git object connectivity is valid.
+4. The tracked worktree is clean by default.
+
+If the preflight fails, rehydrate the checkout before release work. The most reliable repair is a fresh clone into a non-offloaded local directory, or disabling Optimize Mac Storage / keeping the checkout downloaded if using an iCloud-synced Desktop or Documents location.
 
 ---
 
@@ -56,6 +73,7 @@ Use `docs/MAINTAINER_CHECKLIST.md` for maintainer governance/profile verificatio
 From a clean local checkout on `main`:
 
 ```bash
+./scripts/verify-local-preflight.sh
 git pull --ff-only origin main
 git tag v1.0.1
 git push origin v1.0.1

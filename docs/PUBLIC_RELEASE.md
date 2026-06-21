@@ -7,6 +7,7 @@ Use this checklist before making the repository public or publishing a release i
 Run these checks from a clean checkout on `main`:
 
 ```bash
+./scripts/verify-local-preflight.sh
 git status --short --branch
 git ls-files | rg '(^|/)\.DS_Store$|(^|/)Thumbs\.db$|(^|/)desktop\.ini$'
 git grep -n -I -E '(/Users/[^ /]+|/home/[^ /]+|C:\\Users\\[^\\]+|Desktop/[A-Za-z0-9._-]+)' -- . ':(exclude)package-lock.json' ':(exclude)docs/PUBLIC_RELEASE.md'
@@ -70,6 +71,7 @@ If the README feature list changes, verify the implementation and docs together:
 Run the public release validation baseline:
 
 ```bash
+./scripts/verify-local-preflight.sh
 ./scripts/verify-api-doc-commands.sh
 npm run check
 SMOKE_PROFILE=full CARGO_TARGET_DIR=/tmp/900invoice-target-check ./scripts/verify-runtime-smoke.sh
