@@ -131,6 +131,19 @@ Strict repository-policy verification reads live branch-protection settings. Con
 
 ---
 
+## Package Test Artifacts (Optional)
+
+Use `.github/workflows/package-test.yml` for release-candidate platform artifact dry runs before tagging.
+
+The workflow is manual-only (`workflow_dispatch`) and builds:
+
+1. `900Invoice-macos-dmg` from `cargo tauri build --bundles dmg`.
+2. `900Invoice-windows-exe` from `cargo tauri build --bundles nsis`.
+
+Run it from GitHub Actions against the candidate branch or `main`, then download and test the artifacts locally before creating a version tag. These artifacts are for validation only; production distribution still needs the signing/notarization work listed under Future Hardening.
+
+---
+
 ## Post-Release Checklist
 
 1. Verify release artifacts and checksums on GitHub.
@@ -144,6 +157,6 @@ Strict repository-policy verification reads live branch-protection settings. Con
 
 Planned improvements:
 
-1. Add cross-platform build matrix (Linux/macOS/Windows) with artifact uploads.
+1. Promote tested platform artifact packaging into the tagged release workflow when signing/notarization is ready.
 2. Add signing/notarization pipeline integration.
 3. Add provenance/SBOM artifacts per release.

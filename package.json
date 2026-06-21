@@ -21,9 +21,9 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "6.0.0",
     "@sveltejs/vite-plugin-svelte-inspector": "5.0.0",
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-dialog": "^2",
-    "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-notification": "^2",
     "@tauri-apps/plugin-shell": "^2",
     "@tsconfig/svelte": "^5.0.0",

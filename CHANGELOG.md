@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Sprint 069 dependency and security cleanup record.
 - Added Sprint 070 release hygiene and local preflight record.
 - Added a local release preflight script that detects macOS dataless/offloaded git metadata and tracked files.
+- Added Sprint 072 Tauri package alignment and package-test workflow record.
+- Added a manual GitHub Actions package-test workflow for macOS DMG and Windows EXE release-candidate artifacts.
 - Added current maintainer checklist completion blocks to historical Sprint 001 through Sprint 019 records so the first version tag can pass release governance checks.
 - Added repository policy automation scripts:
   - `scripts/apply-repo-policy.sh`
@@ -67,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restored frontend/Tauri IPC parity for client, product, tax, settings, exchange-rate, recurring, invoice, line-item, and payment flows by mapping backend snake_case contracts at the store boundary.
 - Corrected model-backed invoice tax summaries to apply each line item's stored tax rate instead of applying every active tax rate to the full invoice subtotal.
 - Pinned `esrap@2.2.2` because `esrap@2.2.3` was missing its exported TypeScript printer files and blocked Svelte validation/builds.
+- Aligned Tauri npm package versions with the Rust Tauri crate versions so `cargo tauri build` can produce release bundles.
 - Wired Settings import/export actions to native file open/save dialogs for client CSV import/export, invoice CSV export, JSON backups, and JSON restore.
 - Added product CSV import/export from Settings, including inactive product rows and spreadsheet formula sanitization on export.
 - Expanded JSON database backups and additive restore to include invoice line items, invoice tax rows, payments, recurring schedules, exchange rates, settings, business profile, tax rates, products, clients, invoices, and invoice sequences.
